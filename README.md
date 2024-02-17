@@ -21,7 +21,6 @@
    ```
 
 ## Run Instructions:
-To run the closed-chain affordance planning framework on the Boston Dynamics Spot robot, follow these steps:
 
 ### On the Spot Core:
 
