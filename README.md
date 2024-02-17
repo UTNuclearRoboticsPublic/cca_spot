@@ -3,7 +3,7 @@ This repository contains the `cca_spot` package to implement the closed-chain af
 
 ## Build and Install Instructions:
 1. Install the closed-chain affordance planning libraries by following instructions on the following repository's main branch:
-   [Closed-chain affordance planning library installation instructions](https://github.com/UTNuclearRobotics/closed_chain_affordance/tree/main)
+   [Link to instructions](https://github.com/UTNuclearRobotics/closed_chain_affordance/tree/main)
 
 2. Clone this repository onto your local machine ROS2 workspace `src` folder:
    ```
