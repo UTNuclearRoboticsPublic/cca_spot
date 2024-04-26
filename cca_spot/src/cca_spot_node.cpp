@@ -14,13 +14,15 @@ int main(int argc, char **argv)
     std::thread spinner_thread([&node]() { rclcpp::spin(node); });
     /*------------------------------------------------------------*/
     // Specify affordance screw
-    const Eigen::Vector3d aff_screw_axis(0, 0, 1);          // screw axis
+    const Eigen::Vector3d aff_screw_axis(1, 0, 0);          // screw axis
     const Eigen::Vector3d aff_screw_axis_location(0, 0, 0); // location vector
     /*------------------------------------------------------------*/
 
     /*------------------------------------------------------------*/
     // Set affordance goal
     const double aff_goal = 0.5 * M_PI; // Code
+    Eigen::VectorXd sec_goal(1);
+    sec_goal[0] = aff_goal;
     /*------------------------------------------------------------*/
 
     /*------------------------------------------------------------*/
@@ -32,11 +34,11 @@ int main(int argc, char **argv)
 
     /*------------------------------------------------------------*/
     // Run the planner
-    bool success = node->run_cc_affordance_planner(aff_screw_axis, aff_screw_axis_location, aff_goal);
+    /* bool success = node->run_cc_affordance_planner(aff_screw_axis, aff_screw_axis_location, aff_goal); */
     // Or if getting affordance screw location from apriltag
-    /* const std::string apriltag_frame_name = "affordance_frame"; */
-    /*bool success = node->run_cc_affordance_planner(aff_screw_axis, apriltag_frame_name, aff_goal); Note screw axis is
-     * manually set in this case as aff_screw_axis above. Just the location is gotten from Apriltag*/
+    const std::string apriltag_frame_name = "affordance_frame";
+    bool success = node->run_cc_affordance_planner(aff_screw_axis, apriltag_frame_name, sec_goal);
+    /* Note screw axis is manually set in this case as aff_screw_axis above.Just the location is gotten from Apriltag */
     /*------------------------------------------------------------*/
 
     /*------------------------------------------------------------*/
