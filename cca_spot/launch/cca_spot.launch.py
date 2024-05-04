@@ -18,9 +18,9 @@ def generate_launch_description():
         package="cca_spot",
         executable="cca_spot_node",
         name="cc_affordance_planner_ros",
+        prefix=["xterm -e gdb -ex run --args"],
         emulate_tty=True,
-        output='screen',
-        prefix='xterm -e', # to receive input from user
+        output="screen",
         parameters=[
            cca_spot_ros_setup
         ],
