@@ -22,28 +22,28 @@ int main(int argc, char **argv)
 
     /*------------------------------------------------------------*/
     // Set affordance goal
-    /* const double aff_goal = (1.25) * M_PI; // Code */
+    const double aff_goal = (1.75) * M_PI; // Code
     /* const double aff_goal = (1.0 / 2.0) * M_PI; // Code */
     /* const double aff_goal = (1.0) * M_PI; // Code */
-    const double aff_goal = (7.0 / 3.0) * M_PI; // Code
-    Eigen::VectorXd sec_goal(1);
-    /* Eigen::VectorXd sec_goal(2); */
+    /* const double aff_goal = (7.0 / 3.0) * M_PI; // Code */
+    /* Eigen::VectorXd sec_goal(1); */
+    Eigen::VectorXd sec_goal(2);
     /* Eigen::VectorXd sec_goal(3); */
     /* Eigen::VectorXd sec_goal(4); */
-    /* sec_goal[0] = 0.0; */
+    sec_goal[0] = 0.0;
     /* sec_goal[1] = 0.0; */
     /* sec_goal[2] = 0.0; */
     /* sec_goal[3] = aff_goal; */
-    /* sec_goal[1] = aff_goal; */
-    sec_goal[0] = aff_goal;
+    sec_goal[1] = aff_goal;
+    /* sec_goal[0] = aff_goal; */
     std::cout << "Here is the secondary goal: \n" << sec_goal << std::endl;
     /*------------------------------------------------------------*/
 
     /*------------------------------------------------------------*/
     // Optionally set planner parameters
     const double aff_step = 0.2;
-    const int gripper_control_par_tau = 1;
-    /* const int gripper_control_par_tau = 2; */
+    /* const int gripper_control_par_tau = 1; */
+    const int gripper_control_par_tau = 2;
     /* const int gripper_control_par_tau = 3; */
     /* const int gripper_control_par_tau = 4; */
     const double accuracy = 10.0 / 100.0;
