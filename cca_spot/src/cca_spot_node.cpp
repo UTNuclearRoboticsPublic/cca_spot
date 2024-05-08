@@ -14,14 +14,18 @@ int main(int argc, char **argv)
     std::thread spinner_thread([&node]() { rclcpp::spin(node); });
     /*------------------------------------------------------------*/
     // Specify affordance screw
-    /* const Eigen::Vector3d aff_screw_axis(-1, 0, 0);         // screw axis */
-    const Eigen::Vector3d aff_screw_axis(0, 1, 0);          // screw axis
+    /* const Eigen::Vector3d aff_screw_axis(-1, 0, 0); // screw axis */
+    const Eigen::Vector3d aff_screw_axis(1, 0, 0); // screw axis
+    /* const Eigen::Vector3d aff_screw_axis(0, 1, 0);          // screw axis */
     const Eigen::Vector3d aff_screw_axis_location(0, 0, 0); // location vector
     /*------------------------------------------------------------*/
 
     /*------------------------------------------------------------*/
     // Set affordance goal
-    const double aff_goal = (1.0 / 2.0) * M_PI; // Code
+    /* const double aff_goal = (1.25) * M_PI; // Code */
+    /* const double aff_goal = (1.0 / 2.0) * M_PI; // Code */
+    /* const double aff_goal = (1.0) * M_PI; // Code */
+    const double aff_goal = (7.0 / 3.0) * M_PI; // Code
     Eigen::VectorXd sec_goal(1);
     /* Eigen::VectorXd sec_goal(2); */
     /* Eigen::VectorXd sec_goal(3); */
@@ -37,7 +41,7 @@ int main(int argc, char **argv)
 
     /*------------------------------------------------------------*/
     // Optionally set planner parameters
-    const double aff_step = 0.1;
+    const double aff_step = 0.2;
     const int gripper_control_par_tau = 1;
     /* const int gripper_control_par_tau = 2; */
     /* const int gripper_control_par_tau = 3; */
