@@ -23,6 +23,8 @@ This repository contains the `cca_spot` package to implement the closed-chain af
    ```
    source install/setup.bash
    ```
+### Notable Dependencies
+   `xterm`, install with `sudo apt install xterm`
 
 ## Run Instructions:
 
