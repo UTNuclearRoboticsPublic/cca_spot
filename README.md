@@ -10,7 +10,7 @@ This repository contains the `cca_spot` package to implement the closed-chain af
    cd ~/<ros2_ws_name>/src
    ```
    ```
-   git clone -b main git@github.com:UTNuclearRoboticsPublic/cca_spot.git
+   git clone -b main git@github.com:UTNuclearRoboticsPublic/closed_chain_affordance_spot.git
    ```
 
 3. Build and source the `cca_spot` package:
