@@ -2,15 +2,15 @@
 This repository contains the `cca_spot` package to implement the closed-chain affordance planning framework on the NRG Spot robot.
 
 ## Build and Install Instructions:
-1. Install the closed-chain affordance planning libraries by following instructions on the following repository's main branch:
-   [Link to instructions](https://github.com/UTNuclearRobotics/closed_chain_affordance/tree/main)
+1. Install the closed-chain affordance planning libraries by following instructions from the following repository:
+   [Link to instructions](https://github.com/UTNuclearRoboticsPublic/closed_chain_affordance_ros.git)
 
 2. Clone this repository onto your local machine ROS2 workspace `src` folder:
    ```
    cd ~/<ros2_ws_name>/src
    ```
    ```
-   git clone -b main git@github.com:UTNuclearRobotics/closed_chain_affordance_spot.git
+   git clone -b main git@github.com:UTNuclearRoboticsPublic/cca_spot.git
    ```
 
 3. Build and source the `cca_spot` package:
