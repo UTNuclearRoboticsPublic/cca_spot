@@ -56,3 +56,6 @@ This repository contains the `cca_spot` package to implement the closed-chain af
    ```
    ros2 launch cca_spot cca_spot_launch.py
    ```
+
+## Author
+Janak Panthi aka Crasun Jans
