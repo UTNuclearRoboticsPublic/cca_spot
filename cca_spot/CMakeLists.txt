@@ -11,6 +11,9 @@ find_package(Eigen3 REQUIRED)  # Linear algebra library
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(cc_affordance_planner_ros REQUIRED)
+find_package(geometry_msgs)
+find_package(tf2_ros)
+find_package(spot_msgs)
 
 # Specify the node executables
 add_executable(${PROJECT_NAME}_node src/${PROJECT_NAME}_node.cpp)
@@ -18,7 +21,7 @@ add_executable(${PROJECT_NAME}_node_tester src/${PROJECT_NAME}_node_tester.cpp)
 
 # Specify ROS dependencies for the target
 ament_target_dependencies(${PROJECT_NAME}_node rclcpp cc_affordance_planner_ros)
-ament_target_dependencies(${PROJECT_NAME}_node_tester rclcpp cc_affordance_planner_ros)
+ament_target_dependencies(${PROJECT_NAME}_node_tester rclcpp cc_affordance_planner_ros tf2_ros geometry_msgs spot_msgs)
 
 # Link Eigen libraries against this project library
 target_link_libraries(${PROJECT_NAME}_node Eigen3::Eigen)
