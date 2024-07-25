@@ -1,4 +1,5 @@
 #include "rclcpp/rclcpp.hpp"
+#include "std_srvs/srv/trigger.hpp"
 #include "tf2_ros/transform_listener.h"
 #include <Eigen/Core>
 #include <affordance_util/affordance_util.hpp>
@@ -7,23 +8,25 @@
 #include <spot_msgs/action/walk_to.hpp>
 #include <tf2_ros/buffer.h>
 
-class WalkToAndMoveChair : public CcAffordancePlannerRos
+class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlannerRos
 {
   public:
     using WalkTo = spot_msgs::action::WalkTo;
     using GoalHandleWalkTo = rclcpp_action::ClientGoalHandle<WalkTo>;
 
     explicit WalkToAndMoveChair(const std::string &node_name, const rclcpp::NodeOptions &node_options)
-        : CcAffordancePlannerRos(node_name, node_options),
+        : cc_affordance_planner_ros::CcAffordancePlannerRos(node_name, node_options),
           walk_action_server_name_("/spot_driver/walk_to"),
           gripper_open_server_name_("/spot_manipulation_driver/open_gripper"),
           gripper_close_server_name_("/spot_manipulation_driver/close_gripper"),
-          mini_unstow_server_name_("/spot_manipulation_driver/mini_unstow_arm")
+          mini_unstow_server_name_("/spot_manipulation_driver/mini_unstow_arm"),
+          stow_server_name_("/spot_manipulation_driver/stow_arm")
     {
         // Initialize clients
         gripper_open_client_ = this->create_client<std_srvs::srv::Trigger>(gripper_open_server_name_);
         gripper_close_client_ = this->create_client<std_srvs::srv::Trigger>(gripper_close_server_name_);
         mini_unstow_client_ = this->create_client<std_srvs::srv::Trigger>(mini_unstow_server_name_);
+        stow_client_ = this->create_client<std_srvs::srv::Trigger>(stow_server_name_);
         walk_action_client_ = rclcpp_action::create_client<spot_msgs::action::WalkTo>(this, walk_action_server_name_);
 
         // Construct buffer to lookup chair location from apriltag using tf data
@@ -34,45 +37,140 @@ class WalkToAndMoveChair : public CcAffordancePlannerRos
     void run_demo()
     {
 
-        // Walk to a pose infront of the chair
-        if (walk_to_chair_())
-        {
-            // Deploy arm to mini-stow configuration
-            if (mini_unstow_arm())
-            {
-                if (execute_approach_motion())
-                {
-
-                    RCLCPP_INFO(this->get_logger(), "Pipeline success");
-                }
-                else
-                {
-
-                    RCLCPP_ERROR(this->get_logger(), "Approach motion failed");
-                }
-            }
-            else
-            {
-
-                RCLCPP_ERROR(this->get_logger(), "Mini unstow failed");
-            }
-        }
-        else
+        if (!walk_to_chair_())
         {
             RCLCPP_ERROR(this->get_logger(), "Walking to chair failed");
+            return;
         }
-        /*********************************************************/
-        // APPROACH//
-        // Read Apriltag for grasp pose
-        // Open gripper
-        // Perform approach motion
-        // Perform grasp-tuning motion
-        // Close gripper
-        /*======================================================*/
-        /*********************************************************/
-        // AFFORDANCE//
-        // Perform affordance motion
-        /*======================================================*/
+
+        if (!mini_unstow_arm())
+        {
+
+            RCLCPP_ERROR(this->get_logger(), "Mini unstow failed");
+            return;
+        }
+
+        if (!execute_approach_motion())
+        {
+
+            RCLCPP_ERROR(this->get_logger(), "Approach motion failed");
+            return;
+        }
+
+        rclcpp::Rate loop_rate(4);
+        while (*approach_motion_status_ != cc_affordance_planner_ros::Status::SUCCEEDED)
+        {
+            if (*approach_motion_status_ == cc_affordance_planner_ros::Status::UNKNOWN)
+            {
+
+                RCLCPP_ERROR(this->get_logger(), "Approach motion was interrupted mid-execution.");
+                return;
+            }
+
+            loop_rate.sleep();
+        }
+
+        if (!open_gripper())
+        {
+
+            RCLCPP_ERROR(this->get_logger(), "Opening gripper failed");
+            return;
+        }
+
+        if (!execute_grasp_tune_motion())
+        {
+
+            RCLCPP_ERROR(this->get_logger(), "Grasp-tune motion failed");
+            return;
+        }
+        while (*grasp_tune_motion_status_ != cc_affordance_planner_ros::Status::SUCCEEDED)
+        {
+            if (*grasp_tune_motion_status_ == cc_affordance_planner_ros::Status::UNKNOWN)
+            {
+
+                RCLCPP_ERROR(this->get_logger(), "Grasp-tune motion was interrupted mid-execution.");
+                return;
+            }
+
+            loop_rate.sleep();
+        }
+
+        if (!close_gripper())
+        {
+
+            RCLCPP_ERROR(this->get_logger(), "Closing gripper failed");
+            return;
+        }
+
+        if (!execute_affordance_motion())
+        {
+
+            RCLCPP_ERROR(this->get_logger(), "Affordance motion failed");
+            return;
+        }
+        while (*affordance_motion_status_ != cc_affordance_planner_ros::Status::SUCCEEDED)
+        {
+            if (*affordance_motion_status_ == cc_affordance_planner_ros::Status::UNKNOWN)
+            {
+
+                RCLCPP_ERROR(this->get_logger(), "Affordance motion was interrupted mid-execution.");
+                return;
+            }
+
+            loop_rate.sleep();
+        }
+        if (!execute_push_motion())
+        {
+
+            RCLCPP_ERROR(this->get_logger(), "Push motion failed");
+            return;
+        }
+        while (*push_motion_status_ != cc_affordance_planner_ros::Status::SUCCEEDED)
+        {
+            if (*push_motion_status_ == cc_affordance_planner_ros::Status::UNKNOWN)
+            {
+
+                RCLCPP_ERROR(this->get_logger(), "Push motion was interrupted mid-execution.");
+                return;
+            }
+
+            loop_rate.sleep();
+        }
+        if (!open_gripper())
+        {
+
+            RCLCPP_ERROR(this->get_logger(), "Opening gripper failed");
+            return;
+        }
+        if (!execute_retract_motion())
+        {
+
+            RCLCPP_ERROR(this->get_logger(), "Retract motion failed");
+            return;
+        }
+        while (*retract_motion_status_ != cc_affordance_planner_ros::Status::SUCCEEDED)
+        {
+            if (*retract_motion_status_ == cc_affordance_planner_ros::Status::UNKNOWN)
+            {
+
+                RCLCPP_ERROR(this->get_logger(), "Retract motion was interrupted mid-execution.");
+                return;
+            }
+
+            loop_rate.sleep();
+        }
+        if (!stow_arm())
+        {
+
+            RCLCPP_ERROR(this->get_logger(), "Stow failed");
+            return;
+        }
+        if (!close_gripper())
+        {
+
+            RCLCPP_ERROR(this->get_logger(), "Closing gripper failed");
+            return;
+        }
     }
 
   private:
@@ -83,11 +181,13 @@ class WalkToAndMoveChair : public CcAffordancePlannerRos
     rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr gripper_open_client_;
     rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr gripper_close_client_;
     rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr mini_unstow_client_;
+    rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr stow_client_;
     // Client names
     std::string walk_action_server_name_;
     std::string gripper_open_server_name_;
     std::string gripper_close_server_name_;
     std::string mini_unstow_server_name_;
+    std::string stow_server_name_;
 
     const std::string walk_ref_frame_ = "map";
     const std::string cc_ref_frame_ = "arm0_base_link";
@@ -99,12 +199,24 @@ class WalkToAndMoveChair : public CcAffordancePlannerRos
             .finished(); // chair to walk goal
 
     const Eigen::Matrix4d htm_c2a_ =
-        (Eigen::Matrix4d() << 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, -0.35, 0.0, 0.0, 1.0, 0.36, 0.0, 0.0, 0.0, 1.0)
+        (Eigen::Matrix4d() << 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, -0.36, 0.0, 0.0, 1.0, 0.40, 0.0, 0.0, 0.0, 1.0)
             .finished(); // chair to approach
 
     bool walk_result_available_ = false;
+    bool mini_unstow_result_available_ = false;
     bool walk_success_ = false;
+    bool mini_unstow_success_ = false;
     std_srvs::srv::Trigger::Request::SharedPtr trigger_req_ = std::make_shared<std_srvs::srv::Trigger::Request>();
+    std::shared_ptr<cc_affordance_planner_ros::Status> approach_motion_status_ =
+        std::make_shared<cc_affordance_planner_ros::Status>(cc_affordance_planner_ros::Status::UNKNOWN);
+    std::shared_ptr<cc_affordance_planner_ros::Status> grasp_tune_motion_status_ =
+        std::make_shared<cc_affordance_planner_ros::Status>(cc_affordance_planner_ros::Status::UNKNOWN);
+    std::shared_ptr<cc_affordance_planner_ros::Status> affordance_motion_status_ =
+        std::make_shared<cc_affordance_planner_ros::Status>(cc_affordance_planner_ros::Status::UNKNOWN);
+    std::shared_ptr<cc_affordance_planner_ros::Status> retract_motion_status_ =
+        std::make_shared<cc_affordance_planner_ros::Status>(cc_affordance_planner_ros::Status::UNKNOWN);
+    std::shared_ptr<cc_affordance_planner_ros::Status> push_motion_status_ =
+        std::make_shared<cc_affordance_planner_ros::Status>(cc_affordance_planner_ros::Status::UNKNOWN);
     // Methods
     bool walk_to_chair_()
     {
@@ -145,9 +257,10 @@ class WalkToAndMoveChair : public CcAffordancePlannerRos
             std::bind(&WalkToAndMoveChair::walk_goal_response_callback_, this, _1);
         send_goal_options.result_callback = std::bind(&WalkToAndMoveChair::walk_result_callback_, this, _1);
         this->walk_action_client_->async_send_goal(walk_goal, send_goal_options);
-        while (walk_result_available_)
+        rclcpp::Rate loop_rate(4);
+        while (!walk_result_available_)
         {
-            std::this_thread::sleep_for(200ms);
+            loop_rate.sleep();
         }
         return walk_success_;
     }
@@ -202,6 +315,24 @@ class WalkToAndMoveChair : public CcAffordancePlannerRos
             return false;
         }
     }
+
+    bool stow_arm()
+    {
+
+        auto result = stow_client_->async_send_request(trigger_req_);
+        auto response = result.get();
+        // Read response
+        if (response->success)
+        {
+            RCLCPP_INFO(this->get_logger(), "%s service called successfully", stow_server_name_.c_str());
+            return true;
+        }
+        else
+        {
+            RCLCPP_ERROR(this->get_logger(), "%s failed to call mini unstow service", stow_server_name_.c_str());
+            return false;
+        }
+    }
     bool open_gripper()
     {
 
@@ -252,7 +383,8 @@ class WalkToAndMoveChair : public CcAffordancePlannerRos
             return false;
         }
 
-        const Eigen::Matrix4d approach_pose = htm_ccr2c.matrix() * htm_c2a_;
+        Eigen::Matrix4d approach_pose = htm_ccr2c.matrix() * htm_c2a_;
+        approach_pose.block<3, 3>(0, 0) = Eigen::Matrix3d::Identity();
 
         const Eigen::Isometry3d start_pose = affordance_util_ros::get_htm(
             cc_ref_frame_, tool_frame_, *tf_buffer_); // closed-chain reference frame to tool frame
@@ -272,18 +404,103 @@ class WalkToAndMoveChair : public CcAffordancePlannerRos
         // Configure the planner
         cc_affordance_planner::PlannerConfig plannerConfig;
         plannerConfig.accuracy = 10.0 / 100.0;
-        plannerConfig.aff_step = 0.2;
-
-        // Specify affordance screw info
-        affordance_util::ScrewInfo aff;
+        plannerConfig.aff_step = 0.05;
 
         // Specify EE and gripper orientation goals
-        const size_t gripper_control_par = 4;
+        /* const size_t gripper_control_par = 4; */
+        const size_t gripper_control_par = 1;
         Eigen::VectorXd goal = Eigen::VectorXd::Zero(gripper_control_par);
         const double aff_goal = approach_twist.norm();
         goal.tail(1)(0) = aff_goal; // End element
 
-        return this->run_cc_affordance_planner(plannerConfig, aff, goal, gripper_control_par);
+        return this->run_cc_affordance_planner(plannerConfig, approach_screw, goal, gripper_control_par,
+                                               approach_motion_status_);
+    }
+
+    bool execute_grasp_tune_motion()
+    {
+
+        const Eigen::VectorXd aff_screw = (Eigen::VectorXd(6) << 0.0, 0.0, 0.0, 1.0, 0.0, 0.0).finished();
+
+        // Configure the planner
+        cc_affordance_planner::PlannerConfig plannerConfig;
+        plannerConfig.accuracy = 10.0 / 100.0;
+        plannerConfig.aff_step = 0.03;
+
+        // Specify EE and gripper orientation goals
+        /* const size_t gripper_control_par = 4; */
+        const size_t gripper_control_par = 1;
+        Eigen::VectorXd goal = Eigen::VectorXd::Zero(gripper_control_par);
+        const double aff_goal = 0.14;
+        goal.tail(1)(0) = aff_goal; // End element
+
+        return this->run_cc_affordance_planner(plannerConfig, aff_screw, goal, gripper_control_par,
+                                               grasp_tune_motion_status_);
+    }
+    bool execute_affordance_motion()
+    {
+
+        affordance_util::ScrewInfo aff;
+
+        aff.type = "rotation";
+        aff.axis = Eigen::Vector3d(0, 0, 1);
+        aff.location = Eigen::Vector3d(0.0, 0.0, 0.0);
+
+        // Configure the planner
+        cc_affordance_planner::PlannerConfig plannerConfig;
+        plannerConfig.accuracy = 10.0 / 100.0;
+        plannerConfig.aff_step = 0.15;
+
+        // Specify EE and gripper orientation goals
+        const size_t gripper_control_par = 1;
+        Eigen::VectorXd goal = Eigen::VectorXd::Zero(gripper_control_par);
+        const double aff_goal = (1.0 / 2.0) * M_PI;
+        goal.tail(1)(0) = aff_goal; // End element
+
+        return this->run_cc_affordance_planner(plannerConfig, aff, goal, gripper_control_par,
+                                               affordance_motion_status_);
+    }
+
+    bool execute_retract_motion()
+    {
+
+        const Eigen::VectorXd aff_screw = (Eigen::VectorXd(6) << 0.0, 0.0, 0.0, 0.0, 1.0, 0.0).finished();
+
+        // Configure the planner
+        cc_affordance_planner::PlannerConfig plannerConfig;
+        plannerConfig.accuracy = 10.0 / 100.0;
+        plannerConfig.aff_step = 0.05;
+
+        // Specify EE and gripper orientation goals
+        /* const size_t gripper_control_par = 4; */
+        const size_t gripper_control_par = 1;
+        Eigen::VectorXd goal = Eigen::VectorXd::Zero(gripper_control_par);
+        const double aff_goal = 0.16;
+        goal.tail(1)(0) = aff_goal; // End element
+
+        return this->run_cc_affordance_planner(plannerConfig, aff_screw, goal, gripper_control_par,
+                                               retract_motion_status_);
+    }
+
+    bool execute_push_motion()
+    {
+
+        const Eigen::VectorXd aff_screw = (Eigen::VectorXd(6) << 0.0, 0.0, 0.0, 0.0, -1.0, 0.0).finished();
+
+        // Configure the planner
+        cc_affordance_planner::PlannerConfig plannerConfig;
+        plannerConfig.accuracy = 10.0 / 100.0;
+        plannerConfig.aff_step = 0.05;
+
+        // Specify EE and gripper orientation goals
+        /* const size_t gripper_control_par = 4; */
+        const size_t gripper_control_par = 1;
+        Eigen::VectorXd goal = Eigen::VectorXd::Zero(gripper_control_par);
+        const double aff_goal = 0.10;
+        goal.tail(1)(0) = aff_goal; // End element
+
+        return this->run_cc_affordance_planner(plannerConfig, aff_screw, goal, gripper_control_par,
+                                               push_motion_status_);
     }
 };
 int main(int argc, char **argv)

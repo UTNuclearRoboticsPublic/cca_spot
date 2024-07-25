@@ -9,7 +9,8 @@ int main(int argc, char **argv)
     rclcpp::init(argc, argv);
     rclcpp::NodeOptions node_options;
     node_options.automatically_declare_parameters_from_overrides(true);
-    auto node = std::make_shared<CcAffordancePlannerRos>("cc_affordance_planner_ros", node_options);
+    auto node =
+        std::make_shared<cc_affordance_planner_ros::CcAffordancePlannerRos>("cc_affordance_planner_ros", node_options);
 
     // Start spinning the node in a separate thread so we could do things like reading parameters and joint states
     // inside the node
