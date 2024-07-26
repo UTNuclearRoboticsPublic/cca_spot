@@ -490,13 +490,13 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
         // Configure the planner
         cc_affordance_planner::PlannerConfig plannerConfig;
         plannerConfig.accuracy = 10.0 / 100.0;
-        plannerConfig.aff_step = 0.05;
+        plannerConfig.aff_step = 0.02;
 
         // Specify EE and gripper orientation goals
         /* const size_t gripper_control_par = 4; */
         const size_t gripper_control_par = 1;
         Eigen::VectorXd goal = Eigen::VectorXd::Zero(gripper_control_par);
-        const double aff_goal = 0.10;
+        const double aff_goal = 0.08;
         goal.tail(1)(0) = aff_goal; // End element
 
         return this->run_cc_affordance_planner(plannerConfig, aff_screw, goal, gripper_control_par,
