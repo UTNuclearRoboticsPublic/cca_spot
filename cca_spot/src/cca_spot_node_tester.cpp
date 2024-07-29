@@ -400,6 +400,12 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
                 affordance_util::MatrixLog6(affordance_util::TransInv(start_pose.matrix()) * approach_pose));
 
         const Eigen::Matrix<double, 6, 1> approach_screw = approach_twist / approach_twist.norm();
+        std::cout << "Here is the approach screw: \n" << approach_screw << std::endl;
+
+        // Fill out affordance info
+        affordance_util::ScrewInfo aff;
+        aff.type = "screw";
+        aff.screw = approach_screw;
 
         // Configure the planner
         cc_affordance_planner::PlannerConfig plannerConfig;
@@ -413,14 +419,19 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
         const double aff_goal = approach_twist.norm();
         goal.tail(1)(0) = aff_goal; // End element
 
-        return this->run_cc_affordance_planner(plannerConfig, approach_screw, goal, gripper_control_par,
+        const std::string vir_screw_order = "none";
+
+        return this->run_cc_affordance_planner(plannerConfig, aff, goal, gripper_control_par, vir_screw_order,
                                                approach_motion_status_);
     }
 
     bool execute_grasp_tune_motion()
     {
 
-        const Eigen::VectorXd aff_screw = (Eigen::VectorXd(6) << 0.0, 0.0, 0.0, 1.0, 0.0, 0.0).finished();
+        // Fill out affordance info
+        affordance_util::ScrewInfo aff;
+        aff.type = "translation";
+        aff.axis = Eigen::Vector3d(1.0, 0.0, 0.0);
 
         // Configure the planner
         cc_affordance_planner::PlannerConfig plannerConfig;
@@ -434,7 +445,8 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
         const double aff_goal = 0.14;
         goal.tail(1)(0) = aff_goal; // End element
 
-        return this->run_cc_affordance_planner(plannerConfig, aff_screw, goal, gripper_control_par,
+        const std::string vir_screw_order = "xyz";
+        return this->run_cc_affordance_planner(plannerConfig, aff, goal, gripper_control_par, vir_screw_order,
                                                grasp_tune_motion_status_);
     }
     bool execute_affordance_motion()
@@ -457,14 +469,18 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
         const double aff_goal = (1.0 / 2.0) * M_PI;
         goal.tail(1)(0) = aff_goal; // End element
 
-        return this->run_cc_affordance_planner(plannerConfig, aff, goal, gripper_control_par,
+        const std::string vir_screw_order = "xyz";
+        return this->run_cc_affordance_planner(plannerConfig, aff, goal, gripper_control_par, vir_screw_order,
                                                affordance_motion_status_);
     }
 
     bool execute_retract_motion()
     {
 
-        const Eigen::VectorXd aff_screw = (Eigen::VectorXd(6) << 0.0, 0.0, 0.0, 0.0, 1.0, 0.0).finished();
+        // Fill out affordance info
+        affordance_util::ScrewInfo aff;
+        aff.type = "translation";
+        aff.axis = Eigen::Vector3d(0.0, 1.0, 0.0);
 
         // Configure the planner
         cc_affordance_planner::PlannerConfig plannerConfig;
@@ -478,14 +494,18 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
         const double aff_goal = 0.16;
         goal.tail(1)(0) = aff_goal; // End element
 
-        return this->run_cc_affordance_planner(plannerConfig, aff_screw, goal, gripper_control_par,
+        const std::string vir_screw_order = "xyz";
+        return this->run_cc_affordance_planner(plannerConfig, aff, goal, gripper_control_par, vir_screw_order,
                                                retract_motion_status_);
     }
 
     bool execute_push_motion()
     {
 
-        const Eigen::VectorXd aff_screw = (Eigen::VectorXd(6) << 0.0, 0.0, 0.0, 0.0, -1.0, 0.0).finished();
+        // Fill out affordance info
+        affordance_util::ScrewInfo aff;
+        aff.type = "translation";
+        aff.axis = Eigen::Vector3d(0.0, -1.0, 0.0);
 
         // Configure the planner
         cc_affordance_planner::PlannerConfig plannerConfig;
@@ -499,7 +519,9 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
         const double aff_goal = 0.08;
         goal.tail(1)(0) = aff_goal; // End element
 
-        return this->run_cc_affordance_planner(plannerConfig, aff_screw, goal, gripper_control_par,
+        /* const std::string vir_screw_order = "xyz"; */
+        const std::string vir_screw_order = "none";
+        return this->run_cc_affordance_planner(plannerConfig, aff, goal, gripper_control_par, vir_screw_order,
                                                push_motion_status_);
     }
 };
