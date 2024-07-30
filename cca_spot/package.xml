@@ -11,6 +11,7 @@
 
   <depend>rclcpp</depend>
   <depend>cc_affordance_planner_ros</depend>
+  <depend>spot_msgs</depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
