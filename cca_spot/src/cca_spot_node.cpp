@@ -16,6 +16,7 @@ int main(int argc, char **argv)
     // inside the node
     std::thread spinner_thread([&node]() { rclcpp::spin(node); });
 
+    rclcpp::sleep_for(std::chrono::seconds(1)); // Sleep for 1s to ensure affordance start joint state is read
     /*********************************************************/
     /* All one needs to set or modify to plan, visualize, and execute a task using the Closed-chain Affordance*/
     /* framework is within this code block */
@@ -27,11 +28,11 @@ int main(int argc, char **argv)
 
     // Specify affordance screw info
     affordance_util::ScrewInfo aff;
-    aff.type = "translation";
-    aff.axis = Eigen::Vector3d(1.0, 0.0, 0.0);
-    /* aff.type = "rotation"; */
+    /* aff.type = "translation"; */
     /* aff.axis = Eigen::Vector3d(1.0, 0.0, 0.0); */
-    /* aff.location = Eigen::Vector3d(1.0, 2.0, 3.0); */
+    aff.type = "rotation";
+    aff.axis = Eigen::Vector3d(0.0, 0.0, 1.0);
+    aff.location = Eigen::Vector3d(0.0, 0.0, 0.0);
     /* aff.type = "screw"; */
     /* aff.axis = Eigen::Vector3d(1.0, 0.0, 0.0); */
     /* aff.location = Eigen::Vector3d(1.0, 2.0, 3.0); */
