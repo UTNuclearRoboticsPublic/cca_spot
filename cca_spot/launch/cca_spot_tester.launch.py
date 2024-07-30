@@ -1,8 +1,9 @@
 import os
 
 from ament_index_python.packages import get_package_share_directory
-from launch import LaunchDescription
 from launch_ros.actions import Node
+
+from launch import LaunchDescription
 
 
 def generate_launch_description():
@@ -18,8 +19,8 @@ def generate_launch_description():
         package="cca_spot",
         executable="cca_spot_node_tester",
         name="cc_affordance_planner_ros",
-        prefix=["xterm -e gdb -ex run --args"],
-        emulate_tty=True,
+        # prefix=["xterm -e gdb -ex run --args"],
+        # emulate_tty=True,
         output="screen",
         parameters=[cca_spot_ros_setup],
         # Add node-specific parameters and additional launch actions if needed
