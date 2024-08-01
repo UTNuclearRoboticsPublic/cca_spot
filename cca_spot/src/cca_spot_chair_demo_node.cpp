@@ -20,13 +20,15 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
           gripper_open_server_name_("/spot_manipulation_driver/open_gripper"),
           gripper_close_server_name_("/spot_manipulation_driver/close_gripper"),
           mini_unstow_server_name_("/spot_manipulation_driver/mini_unstow_arm"),
-          stow_server_name_("/spot_manipulation_driver/stow_arm")
+          stow_server_name_("/spot_manipulation_driver/stow_arm"),
+          undock_server_name_("/spot_driver/undock")
     {
         // Initialize clients
         gripper_open_client_ = this->create_client<std_srvs::srv::Trigger>(gripper_open_server_name_);
         gripper_close_client_ = this->create_client<std_srvs::srv::Trigger>(gripper_close_server_name_);
         mini_unstow_client_ = this->create_client<std_srvs::srv::Trigger>(mini_unstow_server_name_);
         stow_client_ = this->create_client<std_srvs::srv::Trigger>(stow_server_name_);
+        undock_client_ = this->create_client<std_srvs::srv::Trigger>(undock_server_name_);
         walk_action_client_ = rclcpp_action::create_client<spot_msgs::action::WalkTo>(this, walk_action_server_name_);
 
         // Construct buffer to lookup chair location from apriltag using tf data
@@ -37,20 +39,34 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
     ~WalkToAndMoveChair() { rclcpp::shutdown(); }
     void run_demo()
     {
+        /********************************************************/
+        RCLCPP_INFO(this->get_logger(), "Undocking robot");
+        if (!undock_robot())
+        {
 
+            RCLCPP_ERROR(this->get_logger(), "Undock failed");
+            return;
+        }
+        /********************************************************/
+
+        RCLCPP_INFO(this->get_logger(), "Walking to chair");
         if (!walk_to_chair_())
         {
             RCLCPP_ERROR(this->get_logger(), "Walking to chair failed");
             return;
         }
+        /********************************************************/
 
+        RCLCPP_INFO(this->get_logger(), "Mini-unstowing arm");
         if (!mini_unstow_arm())
         {
 
             RCLCPP_ERROR(this->get_logger(), "Mini unstow failed");
             return;
         }
+        /********************************************************/
 
+        RCLCPP_INFO(this->get_logger(), "Executing approach motion");
         if (!execute_approach_motion())
         {
 
@@ -70,14 +86,18 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
 
             loop_rate.sleep();
         }
+        /********************************************************/
 
+        RCLCPP_INFO(this->get_logger(), "Opening gripper");
         if (!open_gripper())
         {
 
             RCLCPP_ERROR(this->get_logger(), "Opening gripper failed");
             return;
         }
+        /********************************************************/
 
+        RCLCPP_INFO(this->get_logger(), "Executing grasp-tune motion");
         if (!execute_grasp_tune_motion())
         {
 
@@ -95,14 +115,18 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
 
             loop_rate.sleep();
         }
+        /********************************************************/
 
+        RCLCPP_INFO(this->get_logger(), "Closing gripper");
         if (!close_gripper())
         {
 
             RCLCPP_ERROR(this->get_logger(), "Closing gripper failed");
             return;
         }
+        /********************************************************/
 
+        RCLCPP_INFO(this->get_logger(), "Executing affordance motion");
         if (!execute_affordance_motion())
         {
 
@@ -120,6 +144,9 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
 
             loop_rate.sleep();
         }
+        /********************************************************/
+
+        RCLCPP_INFO(this->get_logger(), "Executing push motion");
         if (!execute_push_motion())
         {
 
@@ -137,12 +164,18 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
 
             loop_rate.sleep();
         }
+        /********************************************************/
+
+        RCLCPP_INFO(this->get_logger(), "Opening gripper");
         if (!open_gripper())
         {
 
             RCLCPP_ERROR(this->get_logger(), "Opening gripper failed");
             return;
         }
+        /********************************************************/
+
+        RCLCPP_INFO(this->get_logger(), "Executing retract motion");
         if (!execute_retract_motion())
         {
 
@@ -160,18 +193,25 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
 
             loop_rate.sleep();
         }
+        /********************************************************/
+
+        RCLCPP_INFO(this->get_logger(), "Stowing arm");
         if (!stow_arm())
         {
 
             RCLCPP_ERROR(this->get_logger(), "Stow failed");
             return;
         }
+        /********************************************************/
+
         if (!close_gripper())
         {
 
             RCLCPP_ERROR(this->get_logger(), "Closing gripper failed");
             return;
         }
+        /********************************************************/
+        rclcpp::shutdown();
     }
 
   private:
@@ -183,12 +223,14 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
     rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr gripper_close_client_;
     rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr mini_unstow_client_;
     rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr stow_client_;
+    rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr undock_client_;
     // Client names
     std::string walk_action_server_name_;
     std::string gripper_open_server_name_;
     std::string gripper_close_server_name_;
     std::string mini_unstow_server_name_;
     std::string stow_server_name_;
+    std::string undock_server_name_;
 
     const std::string ref_frame_ = "arm0_base_link";
     const std::string tool_frame_ = "arm0_tool0";
@@ -203,9 +245,7 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
             .finished(); // chair to approach
 
     bool walk_result_available_ = false;
-    bool mini_unstow_result_available_ = false;
     bool walk_success_ = false;
-    bool mini_unstow_success_ = false;
     std_srvs::srv::Trigger::Request::SharedPtr trigger_req_ = std::make_shared<std_srvs::srv::Trigger::Request>();
     std::shared_ptr<cc_affordance_planner_ros::Status> approach_motion_status_ =
         std::make_shared<cc_affordance_planner_ros::Status>(cc_affordance_planner_ros::Status::UNKNOWN);
@@ -218,6 +258,36 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
     std::shared_ptr<cc_affordance_planner_ros::Status> push_motion_status_ =
         std::make_shared<cc_affordance_planner_ros::Status>(cc_affordance_planner_ros::Status::UNKNOWN);
     // Methods
+    bool undock_robot()
+    {
+
+        // Wait for service to be available
+        while (!undock_client_->wait_for_service(1s))
+        {
+            if (!rclcpp::ok())
+            {
+                RCLCPP_ERROR(this->get_logger(), "Interrupted while waiting for %s service. Exiting.",
+                             undock_server_name_.c_str());
+                return false;
+            }
+            RCLCPP_INFO(this->get_logger(), " %s service not available, waiting again...", undock_server_name_.c_str());
+        }
+
+        auto result = undock_client_->async_send_request(trigger_req_);
+        auto response = result.get();
+        // Read response
+        if (response->success)
+        {
+            RCLCPP_INFO(this->get_logger(), "%s service called successfully", undock_server_name_.c_str());
+            return true;
+        }
+        else
+        {
+            RCLCPP_ERROR(this->get_logger(), "%s failed to call mini unstow service", undock_server_name_.c_str());
+            return false;
+        }
+    }
+
     bool walk_to_chair_()
     {
 
@@ -301,6 +371,19 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
     bool mini_unstow_arm()
     {
 
+        // Wait for service to be available
+        while (!mini_unstow_client_->wait_for_service(1s))
+        {
+            if (!rclcpp::ok())
+            {
+                RCLCPP_ERROR(this->get_logger(), "Interrupted while waiting for %s service. Exiting.",
+                             mini_unstow_server_name_.c_str());
+                return false;
+            }
+            RCLCPP_INFO(this->get_logger(), " %s service not available, waiting again...",
+                        mini_unstow_server_name_.c_str());
+        }
+
         auto result = mini_unstow_client_->async_send_request(trigger_req_);
         auto response = result.get();
         // Read response
@@ -319,6 +402,18 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
     bool stow_arm()
     {
 
+        // Wait for service to be available
+        while (!stow_client_->wait_for_service(1s))
+        {
+            if (!rclcpp::ok())
+            {
+                RCLCPP_ERROR(this->get_logger(), "Interrupted while waiting for %s service. Exiting.",
+                             stow_server_name_.c_str());
+                return false;
+            }
+            RCLCPP_INFO(this->get_logger(), " %s service not available, waiting again...", stow_server_name_.c_str());
+        }
+
         auto result = stow_client_->async_send_request(trigger_req_);
         auto response = result.get();
         // Read response
@@ -335,6 +430,19 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
     }
     bool open_gripper()
     {
+
+        // Wait for service to be available
+        while (!gripper_open_client_->wait_for_service(1s))
+        {
+            if (!rclcpp::ok())
+            {
+                RCLCPP_ERROR(this->get_logger(), "Interrupted while waiting for %s service. Exiting.",
+                             gripper_open_server_name_.c_str());
+                return false;
+            }
+            RCLCPP_INFO(this->get_logger(), " %s service not available, waiting again...",
+                        gripper_open_server_name_.c_str());
+        }
 
         auto result = gripper_open_client_->async_send_request(trigger_req_);
         auto response = result.get();
@@ -353,6 +461,19 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
     }
     bool close_gripper()
     {
+
+        // Wait for service to be available
+        while (!gripper_close_client_->wait_for_service(1s))
+        {
+            if (!rclcpp::ok())
+            {
+                RCLCPP_ERROR(this->get_logger(), "Interrupted while waiting for %s service. Exiting.",
+                             gripper_close_server_name_.c_str());
+                return false;
+            }
+            RCLCPP_INFO(this->get_logger(), " %s service not available, waiting again...",
+                        gripper_close_server_name_.c_str());
+        }
 
         auto result = gripper_close_client_->async_send_request(trigger_req_);
         auto response = result.get();
