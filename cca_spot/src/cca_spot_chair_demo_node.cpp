@@ -65,6 +65,27 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
             return;
         }
         /********************************************************/
+        rclcpp::Rate loop_rate(4);
+        RCLCPP_INFO(this->get_logger(), "Executing pre-approach forward motion");
+        if (!execute_preapproach_forward_motion())
+        {
+
+            RCLCPP_ERROR(this->get_logger(), "Pre-approach forward motion failed");
+            return;
+        }
+        while (*preapproach_forward_motion_status_ != cc_affordance_planner_ros::Status::SUCCEEDED)
+        {
+            if (*preapproach_forward_motion_status_ == cc_affordance_planner_ros::Status::UNKNOWN)
+            {
+
+                RCLCPP_ERROR(this->get_logger(), "Preapproach forward motion was interrupted mid-execution.");
+                return;
+            }
+
+            loop_rate.sleep();
+        }
+
+        /********************************************************/
 
         RCLCPP_INFO(this->get_logger(), "Executing approach motion");
         if (!execute_approach_motion())
@@ -74,7 +95,6 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
             return;
         }
 
-        rclcpp::Rate loop_rate(4);
         while (*approach_motion_status_ != cc_affordance_planner_ros::Status::SUCCEEDED)
         {
             if (*approach_motion_status_ == cc_affordance_planner_ros::Status::UNKNOWN)
@@ -269,6 +289,8 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
     bool walk_result_available_ = false;
     bool walk_success_ = false;
     std_srvs::srv::Trigger::Request::SharedPtr trigger_req_ = std::make_shared<std_srvs::srv::Trigger::Request>();
+    std::shared_ptr<cc_affordance_planner_ros::Status> preapproach_forward_motion_status_ =
+        std::make_shared<cc_affordance_planner_ros::Status>(cc_affordance_planner_ros::Status::UNKNOWN);
     std::shared_ptr<cc_affordance_planner_ros::Status> approach_motion_status_ =
         std::make_shared<cc_affordance_planner_ros::Status>(cc_affordance_planner_ros::Status::UNKNOWN);
     std::shared_ptr<cc_affordance_planner_ros::Status> grasp_tune_forward_motion_status_ =
@@ -277,9 +299,9 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
         std::make_shared<cc_affordance_planner_ros::Status>(cc_affordance_planner_ros::Status::UNKNOWN);
     std::shared_ptr<cc_affordance_planner_ros::Status> affordance_motion_status_ =
         std::make_shared<cc_affordance_planner_ros::Status>(cc_affordance_planner_ros::Status::UNKNOWN);
-    std::shared_ptr<cc_affordance_planner_ros::Status> retract_motion_status_ =
-        std::make_shared<cc_affordance_planner_ros::Status>(cc_affordance_planner_ros::Status::UNKNOWN);
     std::shared_ptr<cc_affordance_planner_ros::Status> push_motion_status_ =
+        std::make_shared<cc_affordance_planner_ros::Status>(cc_affordance_planner_ros::Status::UNKNOWN);
+    std::shared_ptr<cc_affordance_planner_ros::Status> retract_motion_status_ =
         std::make_shared<cc_affordance_planner_ros::Status>(cc_affordance_planner_ros::Status::UNKNOWN);
     // Methods
     bool undock_robot()
@@ -568,6 +590,31 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
 
         return this->run_cc_affordance_planner(plannerConfig, aff, goal, gripper_control_par, vir_screw_order,
                                                approach_motion_status_);
+    }
+
+    bool execute_preapproach_forward_motion()
+    {
+
+        // Fill out affordance info
+        affordance_util::ScrewInfo aff;
+        aff.type = "translation";
+        aff.axis = Eigen::Vector3d(1.0, 0.0, 0.0);
+
+        // Configure the planner
+        cc_affordance_planner::PlannerConfig plannerConfig;
+        plannerConfig.accuracy = 10.0 / 100.0;
+        plannerConfig.aff_step = 0.03;
+
+        // Specify EE and gripper orientation goals
+        /* const size_t gripper_control_par = 4; */
+        const size_t gripper_control_par = 1;
+        Eigen::VectorXd goal = Eigen::VectorXd::Zero(gripper_control_par);
+        const double aff_goal = 0.14;
+        goal.tail(1)(0) = aff_goal; // End element
+
+        const std::string vir_screw_order = "xyz";
+        return this->run_cc_affordance_planner(plannerConfig, aff, goal, gripper_control_par, vir_screw_order,
+                                               preapproach_forward_motion_status_);
     }
 
     bool execute_grasp_tune_forward_motion()
