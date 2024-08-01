@@ -97,19 +97,40 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
         }
         /********************************************************/
 
-        RCLCPP_INFO(this->get_logger(), "Executing grasp-tune motion");
-        if (!execute_grasp_tune_motion())
+        RCLCPP_INFO(this->get_logger(), "Executing grasp-tune forward motion");
+        if (!execute_grasp_tune_forward_motion())
         {
 
-            RCLCPP_ERROR(this->get_logger(), "Grasp-tune motion failed");
+            RCLCPP_ERROR(this->get_logger(), "Grasp-tune forward motion failed");
             return;
         }
-        while (*grasp_tune_motion_status_ != cc_affordance_planner_ros::Status::SUCCEEDED)
+        while (*grasp_tune_forward_motion_status_ != cc_affordance_planner_ros::Status::SUCCEEDED)
         {
-            if (*grasp_tune_motion_status_ == cc_affordance_planner_ros::Status::UNKNOWN)
+            if (*grasp_tune_forward_motion_status_ == cc_affordance_planner_ros::Status::UNKNOWN)
             {
 
-                RCLCPP_ERROR(this->get_logger(), "Grasp-tune motion was interrupted mid-execution.");
+                RCLCPP_ERROR(this->get_logger(), "Grasp-tune forward motion was interrupted mid-execution.");
+                return;
+            }
+
+            loop_rate.sleep();
+        }
+
+        /********************************************************/
+
+        RCLCPP_INFO(this->get_logger(), "Executing grasp-tune upward motion");
+        if (!execute_grasp_tune_upward_motion())
+        {
+
+            RCLCPP_ERROR(this->get_logger(), "Grasp-tune upward motion failed");
+            return;
+        }
+        while (*grasp_tune_upward_motion_status_ != cc_affordance_planner_ros::Status::SUCCEEDED)
+        {
+            if (*grasp_tune_upward_motion_status_ == cc_affordance_planner_ros::Status::UNKNOWN)
+            {
+
+                RCLCPP_ERROR(this->get_logger(), "Grasp-tune upward motion was interrupted mid-execution.");
                 return;
             }
 
@@ -243,13 +264,16 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
     const Eigen::Matrix4d htm_c2a_ =
         (Eigen::Matrix4d() << 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, -0.36, 0.0, 0.0, 1.0, 0.40, 0.0, 0.0, 0.0, 1.0)
             .finished(); // chair to approach
+    const double approach_pose_z_offset_ = -0.3;
 
     bool walk_result_available_ = false;
     bool walk_success_ = false;
     std_srvs::srv::Trigger::Request::SharedPtr trigger_req_ = std::make_shared<std_srvs::srv::Trigger::Request>();
     std::shared_ptr<cc_affordance_planner_ros::Status> approach_motion_status_ =
         std::make_shared<cc_affordance_planner_ros::Status>(cc_affordance_planner_ros::Status::UNKNOWN);
-    std::shared_ptr<cc_affordance_planner_ros::Status> grasp_tune_motion_status_ =
+    std::shared_ptr<cc_affordance_planner_ros::Status> grasp_tune_forward_motion_status_ =
+        std::make_shared<cc_affordance_planner_ros::Status>(cc_affordance_planner_ros::Status::UNKNOWN);
+    std::shared_ptr<cc_affordance_planner_ros::Status> grasp_tune_upward_motion_status_ =
         std::make_shared<cc_affordance_planner_ros::Status>(cc_affordance_planner_ros::Status::UNKNOWN);
     std::shared_ptr<cc_affordance_planner_ros::Status> affordance_motion_status_ =
         std::make_shared<cc_affordance_planner_ros::Status>(cc_affordance_planner_ros::Status::UNKNOWN);
@@ -504,7 +528,8 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
             return false;
         }
 
-        Eigen::Matrix4d approach_pose = htm_r2c.matrix() * htm_c2a_;
+        Eigen::Matrix4d approach_pose = htm_r2c.matrix() * htm_c2a_;            // adjust y offset in the chair frame
+        approach_pose(2, 3) = htm_r2c.matrix()(2, 3) + approach_pose_z_offset_; // adjust z offset in the ref frame
         approach_pose.block<3, 3>(0, 0) = Eigen::Matrix3d::Identity();
 
         const Eigen::Isometry3d start_pose =
@@ -545,7 +570,7 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
                                                approach_motion_status_);
     }
 
-    bool execute_grasp_tune_motion()
+    bool execute_grasp_tune_forward_motion()
     {
 
         // Fill out affordance info
@@ -567,8 +592,34 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
 
         const std::string vir_screw_order = "xyz";
         return this->run_cc_affordance_planner(plannerConfig, aff, goal, gripper_control_par, vir_screw_order,
-                                               grasp_tune_motion_status_);
+                                               grasp_tune_forward_motion_status_);
     }
+
+    bool execute_grasp_tune_upward_motion()
+    {
+
+        // Fill out affordance info
+        affordance_util::ScrewInfo aff;
+        aff.type = "translation";
+        aff.axis = Eigen::Vector3d(0.0, 0.0, 1.0);
+
+        // Configure the planner
+        cc_affordance_planner::PlannerConfig plannerConfig;
+        plannerConfig.accuracy = 10.0 / 100.0;
+        plannerConfig.aff_step = 0.02;
+
+        // Specify EE and gripper orientation goals
+        /* const size_t gripper_control_par = 4; */
+        const size_t gripper_control_par = 1;
+        Eigen::VectorXd goal = Eigen::VectorXd::Zero(gripper_control_par);
+        const double aff_goal = 0.05;
+        goal.tail(1)(0) = aff_goal; // End element
+
+        const std::string vir_screw_order = "none";
+        return this->run_cc_affordance_planner(plannerConfig, aff, goal, gripper_control_par, vir_screw_order,
+                                               grasp_tune_upward_motion_status_);
+    }
+
     bool execute_affordance_motion()
     {
 
