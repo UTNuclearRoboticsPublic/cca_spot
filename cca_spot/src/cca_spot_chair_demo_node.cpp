@@ -278,11 +278,11 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
     const std::string chair_frame_ = "affordance_frame"; // Name of the AprilTag frame to locate the chair
 
     const Eigen::Matrix4d htm_c2wg_ =
-        (Eigen::Matrix4d() << 0.0, -1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, -1.0, 0.0, 0.0, 1.2, 0.0, 0.0, 0.0, 1.0)
+        (Eigen::Matrix4d() << 0.0, -1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, -1.0, 0.0, 0.0, 1.4, 0.0, 0.0, 0.0, 1.0)
             .finished(); // chair to walk goal
 
     const Eigen::Matrix4d htm_c2a_ =
-        (Eigen::Matrix4d() << 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, -0.36, 0.0, 0.0, 1.0, 0.40, 0.0, 0.0, 0.0, 1.0)
+        (Eigen::Matrix4d() << 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, -0.36, 0.0, 0.0, 1.0, 0.50, 0.0, 0.0, 0.0, 1.0)
             .finished(); // chair to approach
     const double approach_pose_z_offset_ = -0.3;
 
@@ -609,7 +609,7 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
         /* const size_t gripper_control_par = 4; */
         const size_t gripper_control_par = 1;
         Eigen::VectorXd goal = Eigen::VectorXd::Zero(gripper_control_par);
-        const double aff_goal = 0.14;
+        const double aff_goal = 0.24;
         goal.tail(1)(0) = aff_goal; // End element
 
         const std::string vir_screw_order = "xyz";
@@ -634,7 +634,7 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
         /* const size_t gripper_control_par = 4; */
         const size_t gripper_control_par = 1;
         Eigen::VectorXd goal = Eigen::VectorXd::Zero(gripper_control_par);
-        const double aff_goal = 0.14;
+        const double aff_goal = 0.2;
         goal.tail(1)(0) = aff_goal; // End element
 
         const std::string vir_screw_order = "xyz";
@@ -659,7 +659,7 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
         /* const size_t gripper_control_par = 4; */
         const size_t gripper_control_par = 1;
         Eigen::VectorXd goal = Eigen::VectorXd::Zero(gripper_control_par);
-        const double aff_goal = 0.05;
+        const double aff_goal = 0.08;
         goal.tail(1)(0) = aff_goal; // End element
 
         const std::string vir_screw_order = "none";
