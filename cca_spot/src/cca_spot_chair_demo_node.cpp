@@ -6,6 +6,7 @@
 #include <cc_affordance_planner/cc_affordance_planner.hpp>
 #include <cc_affordance_planner_ros/cc_affordance_planner_ros.hpp>
 #include <spot_msgs/action/walk_to.hpp>
+#include <spot_msgs/srv/dock.hpp>
 #include <tf2_ros/buffer.h>
 
 class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlannerRos
@@ -21,7 +22,8 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
           gripper_close_server_name_("/spot_manipulation_driver/close_gripper"),
           mini_unstow_server_name_("/spot_manipulation_driver/mini_unstow_arm"),
           stow_server_name_("/spot_manipulation_driver/stow_arm"),
-          undock_server_name_("/spot_driver/undock")
+          undock_server_name_("/spot_driver/undock"),
+          dock_server_name_("/spot_driver/dock")
     {
         // Initialize clients
         gripper_open_client_ = this->create_client<std_srvs::srv::Trigger>(gripper_open_server_name_);
@@ -29,6 +31,7 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
         mini_unstow_client_ = this->create_client<std_srvs::srv::Trigger>(mini_unstow_server_name_);
         stow_client_ = this->create_client<std_srvs::srv::Trigger>(stow_server_name_);
         undock_client_ = this->create_client<std_srvs::srv::Trigger>(undock_server_name_);
+        dock_client_ = this->create_client<spot_msgs::srv::Dock>(dock_server_name_);
         walk_action_client_ = rclcpp_action::create_client<spot_msgs::action::WalkTo>(this, walk_action_server_name_);
 
         // Construct buffer to lookup chair location from apriltag using tf data
@@ -48,6 +51,9 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
             return;
         }
         /********************************************************/
+
+	//Capture robot's current pose to walk back to it later
+        const Eigen::Isometry3d htm_start_pose = affordance_util_ros::get_htm(fixed_frame_, robot_navigation_frame_, *tf_buffer_);
 
         RCLCPP_INFO(this->get_logger(), "Walking to chair");
         if (!walk_to_chair_())
@@ -252,6 +258,26 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
             return;
         }
         /********************************************************/
+
+        walk_result_available_ = false;
+        walk_success_ = false;
+        RCLCPP_INFO(this->get_logger(), "Walking back to start pose");
+        if (!walk_back_to_start_pose_(htm_start_pose.matrix()))
+        {
+            RCLCPP_ERROR(this->get_logger(), "Walking back to start pose failed");
+            return;
+        }
+        /********************************************************/
+
+        RCLCPP_INFO(this->get_logger(), "Docking robot");
+        if (!dock_robot())
+        {
+
+            RCLCPP_ERROR(this->get_logger(), "Dock failed");
+            return;
+        }
+
+        /********************************************************/
         rclcpp::shutdown();
     }
 
@@ -265,6 +291,7 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
     rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr mini_unstow_client_;
     rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr stow_client_;
     rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr undock_client_;
+    rclcpp::Client<spot_msgs::srv::Dock>::SharedPtr dock_client_;
     // Client names
     std::string walk_action_server_name_;
     std::string gripper_open_server_name_;
@@ -272,10 +299,13 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
     std::string mini_unstow_server_name_;
     std::string stow_server_name_;
     std::string undock_server_name_;
+    std::string dock_server_name_;
 
     const std::string ref_frame_ = "arm0_base_link";
     const std::string tool_frame_ = "arm0_tool0";
     const std::string chair_frame_ = "affordance_frame"; // Name of the AprilTag frame to locate the chair
+    const std::string fixed_frame_ = "odom";
+    const std::string robot_navigation_frame_ = "base_footprint";
 
     const Eigen::Matrix4d htm_c2wg_ =
         (Eigen::Matrix4d() << 0.0, -1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, -1.0, 0.0, 0.0, 1.4, 0.0, 0.0, 0.0, 1.0)
@@ -329,7 +359,7 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
         }
         else
         {
-            RCLCPP_ERROR(this->get_logger(), "%s failed to call mini unstow service", undock_server_name_.c_str());
+            RCLCPP_ERROR(this->get_logger(), "Failed to call %s service", undock_server_name_.c_str());
             return false;
         }
     }
@@ -440,7 +470,7 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
         }
         else
         {
-            RCLCPP_ERROR(this->get_logger(), "%s failed to call mini unstow service", mini_unstow_server_name_.c_str());
+            RCLCPP_ERROR(this->get_logger(), "Failed to call %s service", mini_unstow_server_name_.c_str());
             return false;
         }
     }
@@ -470,7 +500,7 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
         }
         else
         {
-            RCLCPP_ERROR(this->get_logger(), "%s failed to call mini unstow service", stow_server_name_.c_str());
+            RCLCPP_ERROR(this->get_logger(), "Failed to call %s service", stow_server_name_.c_str());
             return false;
         }
     }
@@ -500,7 +530,7 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
         }
         else
         {
-            RCLCPP_ERROR(this->get_logger(), "%s failed to call mini unstow service",
+            RCLCPP_ERROR(this->get_logger(), "Failed to call %s service",
                          gripper_open_server_name_.c_str());
             return false;
         }
@@ -531,7 +561,7 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
         }
         else
         {
-            RCLCPP_ERROR(this->get_logger(), "%s failed to call mini unstow service",
+            RCLCPP_ERROR(this->get_logger(), "Failed to call %s service",
                          gripper_close_server_name_.c_str());
             return false;
         }
@@ -740,6 +770,75 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
         const std::string vir_screw_order = "xyz";
         return this->run_cc_affordance_planner(plannerConfig, aff, goal, gripper_control_par, vir_screw_order,
                                                push_motion_status_);
+    }
+
+    bool walk_back_to_start_pose_(const Eigen::Matrix4d &htm_start_pose)
+    {
+
+        //  Lookup and compute walk goal
+        const Eigen::Quaterniond quat_start_pose(htm_start_pose.block<3, 3>(0, 0)); // quaternion representation
+
+        // Fill out walk goal message
+        geometry_msgs::msg::PoseStamped walk_goal_pose;
+        walk_goal_pose.header.frame_id = fixed_frame_;
+        walk_goal_pose.header.stamp = this->get_clock()->now();
+
+        walk_goal_pose.pose.position.x = htm_start_pose(0, 3);
+        walk_goal_pose.pose.position.y = htm_start_pose(1, 3);
+        walk_goal_pose.pose.orientation.x = quat_start_pose.x();
+        walk_goal_pose.pose.orientation.y = quat_start_pose.y();
+        walk_goal_pose.pose.orientation.z = quat_start_pose.z();
+        walk_goal_pose.pose.orientation.w = quat_start_pose.w();
+
+        WalkTo::Goal walk_goal;
+        walk_goal.target_pose = walk_goal_pose;
+        walk_goal.maximum_movement_time = 10.0;
+
+        using namespace std::chrono_literals;
+        using namespace std::placeholders;
+        auto send_goal_options = rclcpp_action::Client<WalkTo>::SendGoalOptions();
+        send_goal_options.goal_response_callback =
+            std::bind(&WalkToAndMoveChair::walk_goal_response_callback_, this, _1);
+        send_goal_options.result_callback = std::bind(&WalkToAndMoveChair::walk_result_callback_, this, _1);
+        this->walk_action_client_->async_send_goal(walk_goal, send_goal_options);
+        rclcpp::Rate loop_rate(4);
+        while (!walk_result_available_)
+        {
+            loop_rate.sleep();
+        }
+        return walk_success_;
+    }
+
+    bool dock_robot()
+    {
+
+        // Wait for service to be available
+        while (!dock_client_->wait_for_service(1s))
+        {
+            if (!rclcpp::ok())
+            {
+                RCLCPP_ERROR(this->get_logger(), "Interrupted while waiting for %s service. Exiting.",
+                             dock_server_name_.c_str());
+                return false;
+            }
+            RCLCPP_INFO(this->get_logger(), " %s service not available, waiting again...", dock_server_name_.c_str());
+        }
+
+        auto dock_req = std::make_shared<spot_msgs::srv::Dock::Request>();
+        dock_req->dock_id = 520;
+        auto result = dock_client_->async_send_request(dock_req);
+        auto response = result.get();
+        // Read response
+        if (response->success)
+        {
+            RCLCPP_INFO(this->get_logger(), "%s service called successfully", dock_server_name_.c_str());
+            return true;
+        }
+        else
+        {
+            RCLCPP_ERROR(this->get_logger(), "Failed to call %s service", dock_server_name_.c_str());
+            return false;
+        }
     }
 };
 int main(int argc, char **argv)
