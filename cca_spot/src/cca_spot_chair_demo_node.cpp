@@ -3,6 +3,7 @@
 #include "tf2_ros/transform_listener.h"
 #include <Eigen/Core>
 #include <affordance_util/affordance_util.hpp>
+#include <algorithm>
 #include <cc_affordance_planner/cc_affordance_planner.hpp>
 #include <cc_affordance_planner_ros/cc_affordance_planner_ros.hpp>
 #include <spot_msgs/action/walk_to.hpp>
@@ -52,8 +53,9 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
         }
         /********************************************************/
 
-	//Capture robot's current pose to walk back to it later
-        const Eigen::Isometry3d htm_start_pose = affordance_util_ros::get_htm(fixed_frame_, robot_navigation_frame_, *tf_buffer_);
+        // Capture robot's current pose to walk back to it later
+        const Eigen::Isometry3d htm_start_pose =
+            affordance_util_ros::get_htm(fixed_frame_, robot_navigation_frame_, *tf_buffer_);
 
         RCLCPP_INFO(this->get_logger(), "Walking to chair");
         if (!walk_to_chair_())
@@ -259,23 +261,23 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
         }
         /********************************************************/
 
-        walk_result_available_ = false;
-        walk_success_ = false;
-        RCLCPP_INFO(this->get_logger(), "Walking back to start pose");
-        if (!walk_back_to_start_pose_(htm_start_pose.matrix()))
-        {
-            RCLCPP_ERROR(this->get_logger(), "Walking back to start pose failed");
-            return;
-        }
+        /*walk_result_available_ = false; */
+        /*walk_success_ = false; */
+        /*RCLCPP_INFO(this->get_logger(), "Walking back to start pose"); */
+        /*if (!walk_back_to_start_pose_(htm_start_pose.matrix())) */
+        /*{ */
+        /*    RCLCPP_ERROR(this->get_logger(), "Walking back to start pose failed"); */
+        /*    return; */
+        /*} */
         /********************************************************/
 
-        RCLCPP_INFO(this->get_logger(), "Docking robot");
-        if (!dock_robot())
-        {
+        /*RCLCPP_INFO(this->get_logger(), "Docking robot"); */
+        /*if (!dock_robot()) */
+        /*{ */
 
-            RCLCPP_ERROR(this->get_logger(), "Dock failed");
-            return;
-        }
+        /*    RCLCPP_ERROR(this->get_logger(), "Dock failed"); */
+        /*    return; */
+        /*} */
 
         /********************************************************/
         rclcpp::shutdown();
@@ -368,15 +370,30 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
     {
 
         //  Lookup and compute walk goal
-        const Eigen::Isometry3d htm_r2c =
-            affordance_util_ros::get_htm(ref_frame_, chair_frame_, *tf_buffer_); // ref frame to chair
-        if (htm_r2c.matrix().isApprox(Eigen::Matrix4d::Identity()))
+        rclcpp::Rate tag_read_rate(4);
+        std::vector<Eigen::Matrix4d> htm_r2c_vec;
+        for (int i = 0; i < 10; i++)
         {
-            RCLCPP_ERROR(this->get_logger(), "Could not lookup %s frame. Shutting down.", chair_frame_.c_str());
+            const Eigen::Isometry3d htm_r2c =
+                affordance_util_ros::get_htm(ref_frame_, chair_frame_, *tf_buffer_); // ref frame to chair
+            if (htm_r2c.matrix().isApprox(Eigen::Matrix4d::Identity()))
+            {
+                RCLCPP_ERROR(this->get_logger(), "Could not lookup %s frame. Shutting down.", chair_frame_.c_str());
+                return false;
+            }
+            affordance_util_ros::get_htm(ref_frame_, chair_frame_, *tf_buffer_); // ref frame to chair
+            htm_r2c_vec.push_back(htm_r2c.matrix());
+            tag_read_rate.sleep();
+        }
+        Eigen::Matrix4d htm_r2c_matrix = findMedianNormMatrix(htm_r2c_vec);
+        if (htm_r2c_matrix.isApprox(Eigen::Matrix4d::Identity()))
+        {
+            RCLCPP_ERROR(this->get_logger(), "The median matrix is close to identity");
             return false;
         }
 
-        const Eigen::Matrix4d htm_wr2wg = htm_r2c.matrix() * htm_c2wg_;
+        const Eigen::Matrix4d htm_wr2wg = htm_r2c_matrix * htm_c2wg_;
+        /* const Eigen::Matrix4d htm_wr2wg = htm_r2c.matrix() * htm_c2wg_; */
 
         const Eigen::Quaterniond quat_wr2wg(htm_wr2wg.block<3, 3>(0, 0)); // quaternion representation
 
@@ -530,8 +547,7 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
         }
         else
         {
-            RCLCPP_ERROR(this->get_logger(), "Failed to call %s service",
-                         gripper_open_server_name_.c_str());
+            RCLCPP_ERROR(this->get_logger(), "Failed to call %s service", gripper_open_server_name_.c_str());
             return false;
         }
     }
@@ -561,8 +577,7 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
         }
         else
         {
-            RCLCPP_ERROR(this->get_logger(), "Failed to call %s service",
-                         gripper_close_server_name_.c_str());
+            RCLCPP_ERROR(this->get_logger(), "Failed to call %s service", gripper_close_server_name_.c_str());
             return false;
         }
     }
@@ -839,6 +854,56 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
             RCLCPP_ERROR(this->get_logger(), "Failed to call %s service", dock_server_name_.c_str());
             return false;
         }
+    }
+    // Function to compute the Frobenius norm of a matrix
+    double computeFrobeniusNorm(const Eigen::Matrix4d &matrix) { return matrix.norm(); }
+
+    // Function to find the matrix closest to the median norm
+    Eigen::Matrix4d findMedianNormMatrix(const std::vector<Eigen::Matrix4d> &matrices)
+    {
+        if (matrices.empty())
+        {
+            throw std::invalid_argument("The matrix list is empty.");
+        }
+
+        std::vector<double> norms;
+        norms.reserve(matrices.size());
+
+        for (const auto &matrix : matrices)
+        {
+            norms.push_back(computeFrobeniusNorm(matrix));
+        }
+
+        // Sort norms and find the median
+        std::sort(norms.begin(), norms.end());
+        double medianNorm;
+        size_t numMatrices = norms.size();
+        if (numMatrices % 2 == 0)
+        {
+            medianNorm = (norms[numMatrices / 2 - 1] + norms[numMatrices / 2]) / 2.0;
+        }
+        else
+        {
+            medianNorm = norms[numMatrices / 2];
+        }
+
+        // Find the matrix whose norm is closest to the median norm
+        double minDiff = std::numeric_limits<double>::max();
+        Eigen::Matrix4d closestMatrix;
+
+        for (const auto &matrix : matrices)
+        {
+            double norm = computeFrobeniusNorm(matrix);
+            double diff = std::abs(norm - medianNorm);
+
+            if (diff < minDiff)
+            {
+                minDiff = diff;
+                closestMatrix = matrix;
+            }
+        }
+
+        return closestMatrix;
     }
 };
 int main(int argc, char **argv)
