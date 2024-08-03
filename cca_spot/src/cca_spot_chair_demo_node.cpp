@@ -61,6 +61,15 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
         if (!walk_to_chair_())
         {
             RCLCPP_ERROR(this->get_logger(), "Walking to chair failed");
+            /* return; */
+        }
+
+        walk_result_available_ = false;
+        walk_success_ = false;
+        RCLCPP_INFO(this->get_logger(), "Walking to chair");
+        if (!walk_to_chair_())
+        {
+            RCLCPP_ERROR(this->get_logger(), "Walking to chair failed");
             return;
         }
         /********************************************************/
@@ -261,23 +270,23 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
         }
         /********************************************************/
 
-        /*walk_result_available_ = false; */
-        /*walk_success_ = false; */
-        /*RCLCPP_INFO(this->get_logger(), "Walking back to start pose"); */
-        /*if (!walk_back_to_start_pose_(htm_start_pose.matrix())) */
-        /*{ */
-        /*    RCLCPP_ERROR(this->get_logger(), "Walking back to start pose failed"); */
-        /*    return; */
-        /*} */
+        walk_result_available_ = false;
+        walk_success_ = false;
+        RCLCPP_INFO(this->get_logger(), "Walking back to start pose");
+        if (!walk_back_to_start_pose_(htm_start_pose.matrix()))
+        {
+            RCLCPP_ERROR(this->get_logger(), "Walking back to start pose failed");
+            return;
+        }
         /********************************************************/
 
-        /*RCLCPP_INFO(this->get_logger(), "Docking robot"); */
-        /*if (!dock_robot()) */
-        /*{ */
+        RCLCPP_INFO(this->get_logger(), "Docking robot");
+        if (!dock_robot())
+        {
 
-        /*    RCLCPP_ERROR(this->get_logger(), "Dock failed"); */
-        /*    return; */
-        /*} */
+            RCLCPP_ERROR(this->get_logger(), "Dock failed");
+            return;
+        }
 
         /********************************************************/
         rclcpp::shutdown();
@@ -679,7 +688,7 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
         /* const size_t gripper_control_par = 4; */
         const size_t gripper_control_par = 1;
         Eigen::VectorXd goal = Eigen::VectorXd::Zero(gripper_control_par);
-        const double aff_goal = 0.2;
+        const double aff_goal = 0.25;
         goal.tail(1)(0) = aff_goal; // End element
 
         const std::string vir_screw_order = "xyz";
