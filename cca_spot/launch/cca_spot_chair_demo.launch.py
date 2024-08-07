@@ -19,7 +19,9 @@ def generate_launch_description():
         package="cca_spot",
         executable="cca_spot_chair_demo_node",
         name="cc_affordance_planner_ros",
+        emulate_tty=True,
         output="screen",
+        prefix='xterm -e', # to receive input from user
         parameters=[cca_spot_ros_setup],
     )
     ld.add_action(cc_affordance_planner_ros_node_with_params)
