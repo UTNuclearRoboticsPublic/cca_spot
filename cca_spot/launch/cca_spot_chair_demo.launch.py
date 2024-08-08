@@ -21,7 +21,7 @@ def generate_launch_description():
         name="cc_affordance_planner_ros",
         emulate_tty=True,
         output="screen",
-        prefix='xterm -e', # to receive input from user
+        prefix=["xterm -e gdb -ex run --args"],
         parameters=[cca_spot_ros_setup],
     )
     ld.add_action(cc_affordance_planner_ros_node_with_params)

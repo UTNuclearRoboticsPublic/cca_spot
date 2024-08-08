@@ -57,7 +57,7 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
 
         // Capture robot's current pose to walk back to it later
         /* const Eigen::Isometry3d htm_start_pose = */
-            /* affordance_util_ros::get_htm(fixed_frame_, robot_navigation_frame_, *tf_buffer_); */
+        /*     affordance_util_ros::get_htm(fixed_frame_, robot_navigation_frame_, *tf_buffer_); */
 
         /* RCLCPP_INFO(this->get_logger(), "Walking to chair"); */
         /* if (!walk_to_chair_()) */
@@ -637,6 +637,17 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
           -0.0405662, -0.00651876,0.999156,   0.100135,
           0,          0,          0,          1;
 	geometry_msgs::msg::TransformStamped t;
+
+	Eigen::Matrix4d rot_x;
+	double theta = 0;
+	/* double theta = M_PI/2; */
+	/* double theta = (2.0/3.0)*M_PI; */
+	rot_x << 1,0,0,0,
+	      0,cos(theta), -sin(theta), 0,
+	      0, sin(theta), cos(theta), 0,
+	      0, 0, 0, 1;
+	approach_pose = approach_pose * rot_x;
+
 	Eigen::Quaterniond approach_pose_quat(approach_pose.block<3,3>(0,0));
 
         t.header.stamp = this->get_clock()->now();
@@ -670,8 +681,8 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
         // Fill out affordance info
         affordance_util::ScrewInfo aff;
         aff.type = "rotation";
-        /* aff.axis = Eigen::Vector3d(0, 0, 1); */
-        aff.axis = Eigen::Vector3d(1, 0, 0);
+        aff.axis = Eigen::Vector3d(0, 0, 1);
+        /* aff.axis = Eigen::Vector3d(1, 0, 0); */
         aff.location = Eigen::Vector3d(0.0, 0.0, 0.0);
 
         // Configure the planner
@@ -687,7 +698,8 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
 	/* goal << 0,0,0,1.57,0.0; */
 	/* goal << 0,0,-0.57,1.57,0.0; */
 	goal << 0,0,0.0,0.0,0.0;
-	/* goal << 0,0,0.0,0.0,1.57; */
+	/* goal << 0,0,0.0,0.0,1.57/2.0; */
+	/* goal << 0.0,0.0,0.0,0.0,1.57; */
 
 
         const std::string vir_screw_order = "xyz";
@@ -697,6 +709,8 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
         /*                                        approach_motion_status_); */
         return this->run_cc_affordance_planner(plannerConfig, aff, goal, approach_pose, gripper_control_par,  vir_screw_order,
                                                approach_motion_status_, robot_start_config);
+        /* return this->run_cc_affordance_planner(plannerConfig, aff, goal, approach_pose, gripper_control_par,  vir_screw_order, */
+        /*                                        approach_motion_status_); */
     }
 
     bool execute_preapproach_forward_motion()
