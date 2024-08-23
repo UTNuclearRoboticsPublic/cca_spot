@@ -1,3 +1,8 @@
+/***************************/
+// Author: Crasun Jans
+// Description: The following enables the manipulator-integrated Spot to autonomously undock, walk to a chair, grab it,
+// move it out of the way, and go back and dock.
+/***************************/
 #include "rclcpp/rclcpp.hpp"
 #include "std_srvs/srv/trigger.hpp"
 #include "tf2_ros/transform_broadcaster.h"
@@ -16,6 +21,17 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
   public:
     using WalkTo = spot_msgs::action::WalkTo;
     using GoalHandleWalkTo = rclcpp_action::ClientGoalHandle<WalkTo>;
+
+    enum DemoMotion
+    {
+        PREAPPROACH_FORWARD,
+        APPROACH,
+        GRASPTUNE_FORWARD,
+        GRASPTUNE_UPWARD,
+        AFFORDANCE,
+        PUSH,
+        RETRACT
+    };
 
     explicit WalkToAndMoveChair(const std::string &node_name, const rclcpp::NodeOptions &node_options)
         : cc_affordance_planner_ros::CcAffordancePlannerRos(node_name, node_options),
@@ -47,7 +63,7 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
     {
         /********************************************************/
         /* RCLCPP_INFO(this->get_logger(), "Undocking robot"); */
-        /* if (!undock_robot()) */
+        /* if (!undock_robot_()) */
         /* { */
 
         /*     RCLCPP_ERROR(this->get_logger(), "Undock failed"); */
@@ -68,16 +84,16 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
 
         /* walk_result_available_ = false; */
         /* walk_success_ = false; */
-        /* RCLCPP_INFO(this->get_logger(), "Walking to chair"); */
+        /* RCLCPP_INFO(this->get_logger(), "Walking to chair again"); */
         /* if (!walk_to_chair_()) */
         /* { */
-        /*     RCLCPP_ERROR(this->get_logger(), "Walking to chair failed"); */
+        /*     RCLCPP_ERROR(this->get_logger(), "Walking to chair again failed"); */
         /*     return; */
         /* } */
         /********************************************************/
 
         /* RCLCPP_INFO(this->get_logger(), "Mini-unstowing arm"); */
-        /* if (!mini_unstow_arm()) */
+        /* if (!mini_unstow_arm_()) */
         /* { */
 
         /*     RCLCPP_ERROR(this->get_logger(), "Mini unstow failed"); */
@@ -85,67 +101,18 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
         /* } */
 
         /********************************************************/
-        rclcpp::Rate loop_rate(4);
-        /* RCLCPP_INFO(this->get_logger(), "Executing pre-approach forward motion"); */
-        /* if (!execute_preapproach_forward_motion()) */
+        /* if (!(this->execute_motion_(DemoMotion::PREAPPROACH_FORWARD, "preapproach-forward motion"))) */
         /* { */
-
-        /*     RCLCPP_ERROR(this->get_logger(), "Pre-approach forward motion failed"); */
         /*     return; */
-        /* } */
-        /* while (*preapproach_forward_motion_status_ != cc_affordance_planner_ros::Status::SUCCEEDED) */
-        /* { */
-        /*     if (*preapproach_forward_motion_status_ == cc_affordance_planner_ros::Status::UNKNOWN) */
-        /*     { */
-
-        /*         RCLCPP_ERROR(this->get_logger(), "Preapproach forward motion was interrupted mid-execution."); */
-        /*         return; */
-        /*     } */
-
-        /*     loop_rate.sleep(); */
         /* } */
 
         /********************************************************/
-
-        /* RCLCPP_INFO(this->get_logger(), "Executing approach motion"); */
-        /* if (!execute_approach_motion()) */
+        /* const Eigen::Matrix4d approach_pose = get_approach_pose_(); */
+        /* if (!(this->execute_motion_(DemoMotion::APPROACH, "approach motion", approach_pose))) */
         /* { */
-
-        /*     RCLCPP_ERROR(this->get_logger(), "Approach motion failed"); */
         /*     return; */
         /* } */
 
-        /* Eigen::Matrix4d approach_pose; */
-        /* approach_pose << 0.998453,  0.0378028,  0.0407843,  0.529228, */
-        /* -0.0380367, 0.999264,   0.00497515, -0.16148, */
-        /* -0.0405662, -0.00651876,0.999156,   0.100135, */
-        /* 0,          0,          0,          1; */
-        /* geometry_msgs::msg::TransformStamped t; */
-        /* Eigen::Quaterniond approach_pose_quat(approach_pose.block<3,3>(0,0)); */
-
-        /* t.header.stamp = this->get_clock()->now(); */
-        /* t.header.frame_id = "base_link"; */
-        /* t.child_frame_id = "approach_frame"; */
-        /* t.transform.translation.x = approach_pose(0,3); */
-        /* t.transform.translation.y = approach_pose(1,3); */
-        /* t.transform.translation.z = approach_pose(2,3); */
-        /* t.transform.rotation.x = approach_pose_quat.x(); */
-        /* t.transform.rotation.y = approach_pose_quat.y(); */
-        /* t.transform.rotation.z = approach_pose_quat.z(); */
-        /* t.transform.rotation.w = approach_pose_quat.w(); */
-
-        /* while (*approach_motion_status_ != cc_affordance_planner_ros::Status::SUCCEEDED) */
-        /* { */
-        /*     if (*approach_motion_status_ == cc_affordance_planner_ros::Status::UNKNOWN) */
-        /*     { */
-
-        /*         RCLCPP_ERROR(this->get_logger(), "Approach motion was interrupted mid-execution."); */
-        /*         return; */
-        /*     } */
-        /* tf_broadcaster_->sendTransform(t); */
-
-        /* loop_rate.sleep(); */
-        /* } */
         /********************************************************/
 
         /* RCLCPP_INFO(this->get_logger(), "Opening gripper"); */
@@ -156,45 +123,15 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
         /*     return; */
         /* } */
         /********************************************************/
-
-        /* RCLCPP_INFO(this->get_logger(), "Executing grasp-tune forward motion"); */
-        /* if (!execute_grasp_tune_forward_motion()) */
+        /* if (!(this->execute_motion_(DemoMotion::GRASPTUNE_FORWARD, "grasp-tune-forward motion"))) */
         /* { */
-
-        /*     RCLCPP_ERROR(this->get_logger(), "Grasp-tune forward motion failed"); */
         /*     return; */
-        /* } */
-        /* while (*grasp_tune_forward_motion_status_ != cc_affordance_planner_ros::Status::SUCCEEDED) */
-        /* { */
-        /*     if (*grasp_tune_forward_motion_status_ == cc_affordance_planner_ros::Status::UNKNOWN) */
-        /*     { */
-
-        /*         RCLCPP_ERROR(this->get_logger(), "Grasp-tune forward motion was interrupted mid-execution."); */
-        /*         return; */
-        /*     } */
-
-        /*     loop_rate.sleep(); */
         /* } */
 
         /********************************************************/
-
-        /* RCLCPP_INFO(this->get_logger(), "Executing grasp-tune upward motion"); */
-        /* if (!execute_grasp_tune_upward_motion()) */
+        /* if (!(this->execute_motion_(DemoMotion::GRASPTUNE_UPWARD, "grasp-tune-upward motion"))) */
         /* { */
-
-        /*     RCLCPP_ERROR(this->get_logger(), "Grasp-tune upward motion failed"); */
         /*     return; */
-        /* } */
-        /* while (*grasp_tune_upward_motion_status_ != cc_affordance_planner_ros::Status::SUCCEEDED) */
-        /* { */
-        /*     if (*grasp_tune_upward_motion_status_ == cc_affordance_planner_ros::Status::UNKNOWN) */
-        /*     { */
-
-        /*         RCLCPP_ERROR(this->get_logger(), "Grasp-tune upward motion was interrupted mid-execution."); */
-        /*         return; */
-        /*     } */
-
-        /*     loop_rate.sleep(); */
         /* } */
         /********************************************************/
 
@@ -206,78 +143,36 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
         /*     return; */
         /* } */
         /********************************************************/
-
-        /* RCLCPP_INFO(this->get_logger(), "Executing affordance motion"); */
-        /* if (!execute_affordance_motion()) */
+        /* if (!(this->execute_motion_(DemoMotion::AFFORDANCE, "affordance motion"))) */
         /* { */
-
-        /*     RCLCPP_ERROR(this->get_logger(), "Affordance motion failed"); */
         /*     return; */
         /* } */
-        /* while (*affordance_motion_status_ != cc_affordance_planner_ros::Status::SUCCEEDED) */
-        /* { */
-        /*     if (*affordance_motion_status_ == cc_affordance_planner_ros::Status::UNKNOWN) */
-        /*     { */
 
-        /*         RCLCPP_ERROR(this->get_logger(), "Affordance motion was interrupted mid-execution."); */
-        /*         return; */
-        /*     } */
-
-        /*     loop_rate.sleep(); */
-        /* } */
         /********************************************************/
-
-        /* RCLCPP_INFO(this->get_logger(), "Executing push motion"); */
-        /* if (!execute_push_motion()) */
+        /* if (!(this->execute_motion_(DemoMotion::PUSH, "push motion"))) */
         /* { */
-
-        /*     RCLCPP_ERROR(this->get_logger(), "Push motion failed"); */
         /*     return; */
         /* } */
-        /* while (*push_motion_status_ != cc_affordance_planner_ros::Status::SUCCEEDED) */
-        /* { */
-        /*     if (*push_motion_status_ == cc_affordance_planner_ros::Status::UNKNOWN) */
-        /*     { */
 
-        /*         RCLCPP_ERROR(this->get_logger(), "Push motion was interrupted mid-execution."); */
-        /*         return; */
-        /*     } */
-
-        /*     loop_rate.sleep(); */
-        /* } */
         /********************************************************/
 
         /* RCLCPP_INFO(this->get_logger(), "Opening gripper"); */
-        /* if (!open_gripper()) */
+        /* if (!open_gripper_()) */
         /* { */
 
         /*     RCLCPP_ERROR(this->get_logger(), "Opening gripper failed"); */
         /*     return; */
         /* } */
         /********************************************************/
-
-        /* RCLCPP_INFO(this->get_logger(), "Executing retract motion"); */
-        /* if (!execute_retract_motion()) */
+        /* if (!(this->execute_motion_(DemoMotion::RETRACT, "retract motion"))) */
         /* { */
-
-        /*     RCLCPP_ERROR(this->get_logger(), "Retract motion failed"); */
         /*     return; */
         /* } */
-        /* while (*retract_motion_status_ != cc_affordance_planner_ros::Status::SUCCEEDED) */
-        /* { */
-        /*     if (*retract_motion_status_ == cc_affordance_planner_ros::Status::UNKNOWN) */
-        /*     { */
 
-        /*         RCLCPP_ERROR(this->get_logger(), "Retract motion was interrupted mid-execution."); */
-        /*         return; */
-        /*     } */
-
-        /*     loop_rate.sleep(); */
-        /* } */
         /********************************************************/
 
         /* RCLCPP_INFO(this->get_logger(), "Stowing arm"); */
-        /* if (!stow_arm()) */
+        /* if (!stow_arm_()) */
         /* { */
 
         /*     RCLCPP_ERROR(this->get_logger(), "Stow failed"); */
@@ -285,7 +180,7 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
         /* } */
         /********************************************************/
 
-        /* if (!close_gripper()) */
+        /* if (!close_gripper_()) */
         /* { */
 
         /*     RCLCPP_ERROR(this->get_logger(), "Closing gripper failed"); */
@@ -304,7 +199,7 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
         /********************************************************/
 
         /* RCLCPP_INFO(this->get_logger(), "Docking robot"); */
-        /* if (!dock_robot()) */
+        /* if (!dock_robot_()) */
         /* { */
 
         /*     RCLCPP_ERROR(this->get_logger(), "Dock failed"); */
@@ -312,46 +207,23 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
         /* } */
 
         /********************************************************/
+        // If multiple arm motions at once, all in this case:
+        const Eigen::Matrix4d approach_pose = get_approach_pose_();
+        const std::vector<DemoMotion> demo_motions = {DemoMotion::PREAPPROACH_FORWARD,
+                                                      DemoMotion::APPROACH,
+                                                      DemoMotion::GRASPTUNE_FORWARD,
+                                                      DemoMotion::GRASPTUNE_UPWARD,
+                                                      DemoMotion::AFFORDANCE,
+                                                      DemoMotion::PUSH,
+                                                      DemoMotion::RETRACT};
 
-        RCLCPP_INFO(this->get_logger(), "Executing approach and affordance motion");
-        if (!execute_approach_and_affordance_motion())
+        if (!(this->execute_motion_(demo_motions, "multiple motions", approach_pose)))
         {
-
-            RCLCPP_ERROR(this->get_logger(), "Approach and affordance motion failed");
             return;
         }
+        // If multiple arm motions at once, all in this case:
+        RCLCPP_INFO(this->get_logger(), "Successfully concluded demo");
 
-        /* Eigen::Matrix4d approach_pose; */
-        /* approach_pose << 0.998453,  0.0378028,  0.0407843,  0.529228, */
-        /* -0.0380367, 0.999264,   0.00497515, -0.16148, */
-        /* -0.0405662, -0.00651876,0.999156,   0.100135, */
-        /* 0,          0,          0,          1; */
-        /* geometry_msgs::msg::TransformStamped t; */
-        /* Eigen::Quaterniond approach_pose_quat(approach_pose.block<3,3>(0,0)); */
-
-        /* t.header.stamp = this->get_clock()->now(); */
-        /* t.header.frame_id = "base_link"; */
-        /* t.child_frame_id = "approach_frame"; */
-        /* t.transform.translation.x = approach_pose(0,3); */
-        /* t.transform.translation.y = approach_pose(1,3); */
-        /* t.transform.translation.z = approach_pose(2,3); */
-        /* t.transform.rotation.x = approach_pose_quat.x(); */
-        /* t.transform.rotation.y = approach_pose_quat.y(); */
-        /* t.transform.rotation.z = approach_pose_quat.z(); */
-        /* t.transform.rotation.w = approach_pose_quat.w(); */
-
-        while (*approach_and_affordance_motion_status_ != cc_affordance_planner_ros::Status::SUCCEEDED)
-        {
-            if (*approach_and_affordance_motion_status_ == cc_affordance_planner_ros::Status::UNKNOWN)
-            {
-
-                RCLCPP_ERROR(this->get_logger(), "Approach and affordance motion was interrupted mid-execution.");
-                return;
-            }
-            /* tf_broadcaster_->sendTransform(t); */
-
-            loop_rate.sleep();
-        }
         rclcpp::shutdown();
     }
 
@@ -394,24 +266,95 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
     bool walk_result_available_ = false;
     bool walk_success_ = false;
     std_srvs::srv::Trigger::Request::SharedPtr trigger_req_ = std::make_shared<std_srvs::srv::Trigger::Request>();
-    std::shared_ptr<cc_affordance_planner_ros::Status> preapproach_forward_motion_status_ =
-        std::make_shared<cc_affordance_planner_ros::Status>(cc_affordance_planner_ros::Status::UNKNOWN);
-    std::shared_ptr<cc_affordance_planner_ros::Status> approach_motion_status_ =
-        std::make_shared<cc_affordance_planner_ros::Status>(cc_affordance_planner_ros::Status::UNKNOWN);
-    std::shared_ptr<cc_affordance_planner_ros::Status> grasp_tune_forward_motion_status_ =
-        std::make_shared<cc_affordance_planner_ros::Status>(cc_affordance_planner_ros::Status::UNKNOWN);
-    std::shared_ptr<cc_affordance_planner_ros::Status> grasp_tune_upward_motion_status_ =
-        std::make_shared<cc_affordance_planner_ros::Status>(cc_affordance_planner_ros::Status::UNKNOWN);
-    std::shared_ptr<cc_affordance_planner_ros::Status> affordance_motion_status_ =
-        std::make_shared<cc_affordance_planner_ros::Status>(cc_affordance_planner_ros::Status::UNKNOWN);
-    std::shared_ptr<cc_affordance_planner_ros::Status> approach_and_affordance_motion_status_ =
-        std::make_shared<cc_affordance_planner_ros::Status>(cc_affordance_planner_ros::Status::UNKNOWN);
-    std::shared_ptr<cc_affordance_planner_ros::Status> push_motion_status_ =
-        std::make_shared<cc_affordance_planner_ros::Status>(cc_affordance_planner_ros::Status::UNKNOWN);
-    std::shared_ptr<cc_affordance_planner_ros::Status> retract_motion_status_ =
-        std::make_shared<cc_affordance_planner_ros::Status>(cc_affordance_planner_ros::Status::UNKNOWN);
+
+    Eigen::VectorXd robot_start_config_ =
+        /* (Eigen::VectorXd(6) << -1.49419, -1.09419, 2.2496, -0.567882, -0.796551, 0.396139).finished(); */
+        (Eigen::VectorXd(6) << 0.0, -1.09419, 2.2496, -0.567882, -0.796551, 0.396139).finished(); // For testing
+
     // Methods
-    bool undock_robot()
+    bool execute_motion_(const DemoMotion demo_motion, const std::string &motion_name,
+                         const Eigen::Matrix4d &approach_pose = Eigen::Matrix4d())
+    {
+        // Start motion status as unknown
+        auto motion_status =
+            std::make_shared<cc_affordance_planner_ros::Status>(cc_affordance_planner_ros::Status::UNKNOWN);
+
+        RCLCPP_INFO(this->get_logger(), "Executing %s motion", motion_name.c_str());
+
+        auto [planner_config, task_description] =
+            this->get_planner_config_and_task_description_(demo_motion, approach_pose);
+
+        // Execute the specified motion
+        if (!(this->run_cc_affordance_planner(planner_config, task_description, motion_status,
+                                              robot_start_config_))) // Call with robot_start_config for testing
+        /* if (!(this->run_cc_affordance_planner(planner_config, task_description, motion_status)) */
+        {
+            RCLCPP_ERROR(this->get_logger(), "%s motion failed", motion_name.c_str());
+            return false;
+        }
+
+        // Check status
+        rclcpp::Rate loop_rate(4);
+        while (*motion_status != cc_affordance_planner_ros::Status::SUCCEEDED)
+        {
+            if (*motion_status == cc_affordance_planner_ros::Status::UNKNOWN)
+            {
+
+                RCLCPP_ERROR(this->get_logger(), "%s motion was interrupted mid-execution.", motion_name.c_str());
+                return false;
+            }
+
+            loop_rate.sleep();
+        }
+        return true;
+    }
+
+    bool execute_motion_(const std::vector<DemoMotion> &demo_motions, const std::string &motion_name,
+                         const Eigen::Matrix4d &approach_pose = Eigen::Matrix4d())
+    {
+        // Start motion status as unknown
+        auto motion_status =
+            std::make_shared<cc_affordance_planner_ros::Status>(cc_affordance_planner_ros::Status::UNKNOWN);
+
+        RCLCPP_INFO(this->get_logger(), "Executing %s motion", motion_name.c_str());
+
+        // Compose planner configs and task descriptions for various motion tasks
+        std::vector<cc_affordance_planner::PlannerConfig> planner_configs;
+        std::vector<cc_affordance_planner::TaskDescription> task_descriptions;
+        for (const auto &demo_motion : demo_motions)
+        {
+
+            auto [planner_config, task_description] =
+                this->get_planner_config_and_task_description_(demo_motion, approach_pose);
+            planner_configs.push_back(planner_config);
+            task_descriptions.push_back(task_description);
+        }
+
+        // Execute the specified motion
+        if (!(this->run_cc_affordance_planner(planner_configs, task_descriptions, motion_status, robot_start_config_)))
+        /* if (!(this->run_cc_affordance_planner(planner_config, task_description, motion_status)) */
+        {
+            RCLCPP_ERROR(this->get_logger(), "%s motion failed", motion_name.c_str());
+            return false;
+        }
+
+        // Check status
+        rclcpp::Rate loop_rate(4);
+        while (*motion_status != cc_affordance_planner_ros::Status::SUCCEEDED)
+        {
+            if (*motion_status == cc_affordance_planner_ros::Status::UNKNOWN)
+            {
+
+                RCLCPP_ERROR(this->get_logger(), "%s motion was interrupted mid-execution.", motion_name.c_str());
+                return false;
+            }
+
+            loop_rate.sleep();
+        }
+        return true;
+    }
+
+    bool undock_robot_()
     {
 
         // Wait for service to be available
@@ -460,7 +403,9 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
             htm_r2c_vec.push_back(htm_r2c.matrix());
             tag_read_rate.sleep();
         }
-        Eigen::Matrix4d htm_r2c_matrix = findMedianNormMatrix(htm_r2c_vec);
+
+        // Compute the median matrix to combat reading fluctuations
+        Eigen::Matrix4d htm_r2c_matrix = findMedianNormMatrix_(htm_r2c_vec);
         if (htm_r2c_matrix.isApprox(Eigen::Matrix4d::Identity()))
         {
             RCLCPP_ERROR(this->get_logger(), "The median matrix is close to identity");
@@ -536,7 +481,7 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
         walk_success_ = true;
     }
 
-    bool mini_unstow_arm()
+    bool mini_unstow_arm_()
     {
 
         // Wait for service to be available
@@ -567,7 +512,7 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
         }
     }
 
-    bool stow_arm()
+    bool stow_arm_()
     {
 
         // Wait for service to be available
@@ -596,7 +541,7 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
             return false;
         }
     }
-    bool open_gripper()
+    bool open_gripper_()
     {
 
         // Wait for service to be available
@@ -626,7 +571,7 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
             return false;
         }
     }
-    bool close_gripper()
+    bool close_gripper_()
     {
 
         // Wait for service to be available
@@ -657,48 +602,22 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
         }
     }
 
-    bool execute_approach_motion()
+    void publish_transform_(const Eigen::Matrix4d &htm)
     {
-
-        // Compute approach screw
-        /* const Eigen::Isometry3d htm_r2c = */
-        /*     affordance_util_ros::get_htm(ref_frame_, chair_frame_, *tf_buffer_); // reference frame to chair */
-
-        /* if (htm_r2c.matrix().isApprox(Eigen::Matrix4d::Identity())) */
-        /* { */
-        /*     RCLCPP_ERROR(this->get_logger(), "Could not lookup %s frame. Shutting down.", chair_frame_.c_str()); */
-        /*     return false; */
-        /* } */
-
-        /* Eigen::Matrix4d approach_pose = htm_r2c.matrix() * htm_c2a_;            // adjust y offset in the chair frame
-         */
-        /* approach_pose(2, 3) = htm_r2c.matrix()(2, 3) + approach_pose_z_offset_; // adjust z offset in the ref frame
-         */
-        /* approach_pose.block<3, 3>(0, 0) = Eigen::Matrix3d::Identity(); */
-        Eigen::Matrix4d approach_pose;
-        approach_pose << 0.998453, 0.0378028, 0.0407843, 0.529228, -0.0380367, 0.999264, 0.00497515, -0.16148,
-            -0.0405662, -0.00651876, 0.999156, 0.100135, 0, 0, 0, 1;
         geometry_msgs::msg::TransformStamped t;
 
-        Eigen::Matrix4d rot_x;
-        /* double theta = 0.0; */
-        double theta = M_PI / 2;
-        /* double theta = (2.0/3.0)*M_PI; */
-        rot_x << 1, 0, 0, 0, 0, cos(theta), -sin(theta), 0, 0, sin(theta), cos(theta), 0, 0, 0, 0, 1;
-        approach_pose = approach_pose * rot_x;
-
-        Eigen::Quaterniond approach_pose_quat(approach_pose.block<3, 3>(0, 0));
+        Eigen::Quaterniond htm_quat(htm.block<3, 3>(0, 0));
 
         t.header.stamp = this->get_clock()->now();
-        t.header.frame_id = "arm0_base_link";
+        t.header.frame_id = ref_frame_;
         t.child_frame_id = "approach_frame";
-        t.transform.translation.x = approach_pose(0, 3);
-        t.transform.translation.y = approach_pose(1, 3);
-        t.transform.translation.z = approach_pose(2, 3);
-        t.transform.rotation.x = approach_pose_quat.x();
-        t.transform.rotation.y = approach_pose_quat.y();
-        t.transform.rotation.z = approach_pose_quat.z();
-        t.transform.rotation.w = approach_pose_quat.w();
+        t.transform.translation.x = htm(0, 3);
+        t.transform.translation.y = htm(1, 3);
+        t.transform.translation.z = htm(2, 3);
+        t.transform.rotation.x = htm_quat.x();
+        t.transform.rotation.y = htm_quat.y();
+        t.transform.rotation.z = htm_quat.z();
+        t.transform.rotation.w = htm_quat.w();
 
         rclcpp::Rate loop_rate(4);
         for (int i = 0; i <= 10; i++)
@@ -706,293 +625,7 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
             tf_broadcaster_->sendTransform(t);
             loop_rate.sleep();
         }
-
-        // Configure the planner
-        cc_affordance_planner::PlannerConfig planner_config;
-        planner_config.accuracy = 10.0 / 100.0;
-        planner_config.trajectory_density = 10;
-
-        // Provide affordance info
-        affordance_util::ScrewInfo aff;
-        aff.type = affordance_util::ScrewType::ROTATION;
-        aff.axis = Eigen::Vector3d(0, 0, 1);
-        aff.location = Eigen::Vector3d(0.0, 0.0, 0.0);
-        /* Eigen::VectorXd aff_goal = (Eigen::VectorXd(1) << (1.0 / 2.0) * M_PI).finished(); */
-        Eigen::VectorXd aff_goal = (Eigen::VectorXd(1) << (1.0 / 4.0) * M_PI).finished();
-        /* Eigen::VectorXd aff_goal = (Eigen::VectorXd(1) << 0.0001).finished(); */
-
-        // Furnish task description
-        cc_affordance_planner::TaskDescription task_description;
-        task_description.motion_type = cc_affordance_planner::MotionType::APPROACH;
-        task_description.affordance_info = aff;
-        task_description.nof_secondary_joints = 2; // affordance only
-        task_description.secondary_joint_goals = (Eigen::VectorXd(2) << 0, aff_goal).finished();
-        task_description.grasp_pose = approach_pose;
-
-        // Optional robot start config for planning visualization without real robot
-        Eigen::VectorXd robot_start_config(6);
-        /* robot_start_config << -1.49419, -1.09419, 2.2496, -0.567882, -0.796551, 0.396139; */
-        robot_start_config << 0.0, -1.09419, 2.2496, -0.567882, -0.796551, 0.396139;
-        std::cout << "DEBUGGGGGGGGG FLAG" << std::endl;
-
-        return this->run_cc_affordance_planner(planner_config, task_description, affordance_motion_status_,
-                                               robot_start_config);
     }
-
-    bool execute_approach_and_affordance_motion()
-    {
-
-        // Compute approach screw
-        /* const Eigen::Isometry3d htm_r2c = */
-        /*     affordance_util_ros::get_htm(ref_frame_, chair_frame_, *tf_buffer_); // reference frame to chair */
-
-        /* if (htm_r2c.matrix().isApprox(Eigen::Matrix4d::Identity())) */
-        /* { */
-        /*     RCLCPP_ERROR(this->get_logger(), "Could not lookup %s frame. Shutting down.", chair_frame_.c_str()); */
-        /*     return false; */
-        /* } */
-
-        /* Eigen::Matrix4d approach_pose = htm_r2c.matrix() * htm_c2a_;            // adjust y offset in the chair frame
-         */
-        /* approach_pose(2, 3) = htm_r2c.matrix()(2, 3) + approach_pose_z_offset_; // adjust z offset in the ref frame
-         */
-        /* approach_pose.block<3, 3>(0, 0) = Eigen::Matrix3d::Identity(); */
-        Eigen::Matrix4d approach_pose;
-        approach_pose << 0.998453, 0.0378028, 0.0407843, 0.529228, -0.0380367, 0.999264, 0.00497515, -0.16148,
-            -0.0405662, -0.00651876, 0.999156, 0.100135, 0, 0, 0, 1;
-        geometry_msgs::msg::TransformStamped t;
-
-        Eigen::Matrix4d rot_x;
-        /* double theta = 0.0; */
-        /* double theta = M_PI / 2; */
-        double theta = (2.0 / 3.0) * M_PI;
-        rot_x << 1, 0, 0, 0, 0, cos(theta), -sin(theta), 0, 0, sin(theta), cos(theta), 0, 0, 0, 0, 1;
-        approach_pose = approach_pose * rot_x;
-
-        Eigen::Quaterniond approach_pose_quat(approach_pose.block<3, 3>(0, 0));
-
-        t.header.stamp = this->get_clock()->now();
-        t.header.frame_id = "arm0_base_link";
-        t.child_frame_id = "approach_frame";
-        t.transform.translation.x = approach_pose(0, 3);
-        t.transform.translation.y = approach_pose(1, 3);
-        t.transform.translation.z = approach_pose(2, 3);
-        t.transform.rotation.x = approach_pose_quat.x();
-        t.transform.rotation.y = approach_pose_quat.y();
-        t.transform.rotation.z = approach_pose_quat.z();
-        t.transform.rotation.w = approach_pose_quat.w();
-
-        rclcpp::Rate loop_rate(4);
-        for (int i = 0; i <= 10; i++)
-        {
-            tf_broadcaster_->sendTransform(t);
-            loop_rate.sleep();
-        }
-
-        // Configure the planners
-        cc_affordance_planner::PlannerConfig approach_planner_config;
-        approach_planner_config.accuracy = 1.0 / 100.0;
-        approach_planner_config.trajectory_density = 10;
-
-        cc_affordance_planner::PlannerConfig affordance_planner_config;
-        affordance_planner_config.accuracy = 10.0 / 100.0;
-        affordance_planner_config.trajectory_density = 5;
-
-        // Provide affordance info
-        affordance_util::ScrewInfo aff;
-        aff.type = affordance_util::ScrewType::ROTATION;
-        aff.axis = Eigen::Vector3d(0, 0, 1);
-        /* aff.axis = Eigen::Vector3d(1, 0, 0); */
-        aff.location = Eigen::Vector3d(0.0, 0.0, 0.0);
-        /* Eigen::VectorXd aff_goal = (Eigen::VectorXd(1) << (1.0 / 2.0) * M_PI).finished(); */
-        Eigen::VectorXd aff_goal = (Eigen::VectorXd(1) << (1.0 / 4.0) * M_PI).finished();
-        /* Eigen::VectorXd aff_goal = (Eigen::VectorXd(1) << 0.0001).finished(); */
-
-        // Furnish approach task description
-        cc_affordance_planner::TaskDescription approach_task_description;
-        approach_task_description.motion_type = cc_affordance_planner::MotionType::APPROACH;
-        approach_task_description.affordance_info = aff;
-        approach_task_description.nof_secondary_joints = 2; // affordance only
-        /* approach_task_description.nof_secondary_joints = 5; // affordance only */
-        approach_task_description.secondary_joint_goals = (Eigen::VectorXd(2) << 0, aff_goal).finished();
-        /* approach_task_description.secondary_joint_goals = */
-        /* (Eigen::VectorXd(5) << 1e-5, 1e-5, 1e-5, 0, aff_goal).finished(); */
-        approach_task_description.vir_screw_order = affordance_util::VirtualScrewOrder::NONE;
-        approach_task_description.grasp_pose = approach_pose;
-
-        // Furnish affordance task description
-        cc_affordance_planner::TaskDescription affordance_task_description;
-        affordance_task_description.motion_type = cc_affordance_planner::MotionType::AFFORDANCE;
-        affordance_task_description.affordance_info = aff;
-        affordance_task_description.nof_secondary_joints = 1; // affordance only
-        affordance_task_description.secondary_joint_goals = aff_goal;
-
-        // Optional robot start config for planning visualization without real robot
-        Eigen::VectorXd robot_start_config(6);
-        /* robot_start_config << -1.49419, -1.09419, 2.2496, -0.567882, -0.796551, 0.396139; */
-        robot_start_config << 0.0, -1.09419, 2.2496, -0.567882, -0.796551, 0.396139;
-        /* robot_start_config << 1.49419, -1.09419, 2.2496, -0.567882, -0.796551, 0.396139; */
-
-        return this->run_cc_affordance_planner(approach_planner_config, affordance_planner_config,
-                                               approach_task_description, affordance_task_description,
-                                               approach_and_affordance_motion_status_, robot_start_config);
-    }
-
-    /* bool execute_preapproach_forward_motion() */
-    /* { */
-
-    /*     // Fill out affordance info */
-    /*     affordance_util::ScrewInfo aff; */
-    /*     aff.type = "translation"; */
-    /*     aff.axis = Eigen::Vector3d(1.0, 0.0, 0.0); */
-
-    /*     // Configure the planner */
-    /*     cc_affordance_planner::PlannerConfig plannerConfig; */
-    /*     plannerConfig.accuracy = 10.0 / 100.0; */
-    /*     plannerConfig.aff_step = 0.03; */
-
-    /*     // Specify EE and gripper orientation goals */
-    /*     /1* const size_t gripper_control_par = 4; *1/ */
-    /*     const size_t gripper_control_par = 1; */
-    /*     Eigen::VectorXd goal = Eigen::VectorXd::Zero(gripper_control_par); */
-    /*     const double aff_goal = 0.24; */
-    /*     goal.tail(1)(0) = aff_goal; // End element */
-
-    /*     const std::string vir_screw_order = "xyz"; */
-    /*     return this->run_cc_affordance_planner(plannerConfig, aff, goal, gripper_control_par, vir_screw_order, */
-    /*                                            preapproach_forward_motion_status_); */
-    /* } */
-
-    /* bool execute_grasp_tune_forward_motion() */
-    /* { */
-
-    /*     // Fill out affordance info */
-    /*     affordance_util::ScrewInfo aff; */
-    /*     aff.type = "translation"; */
-    /*     aff.axis = Eigen::Vector3d(1.0, 0.0, 0.0); */
-
-    /*     // Configure the planner */
-    /*     cc_affordance_planner::PlannerConfig plannerConfig; */
-    /*     plannerConfig.accuracy = 10.0 / 100.0; */
-    /*     plannerConfig.aff_step = 0.03; */
-
-    /*     // Specify EE and gripper orientation goals */
-    /*     /1* const size_t gripper_control_par = 4; *1/ */
-    /*     const size_t gripper_control_par = 1; */
-    /*     Eigen::VectorXd goal = Eigen::VectorXd::Zero(gripper_control_par); */
-    /*     const double aff_goal = 0.25; */
-    /*     goal.tail(1)(0) = aff_goal; // End element */
-
-    /*     const std::string vir_screw_order = "xyz"; */
-    /*     return this->run_cc_affordance_planner(plannerConfig, aff, goal, gripper_control_par, vir_screw_order, */
-    /*                                            grasp_tune_forward_motion_status_); */
-    /* } */
-
-    /* bool execute_grasp_tune_upward_motion() */
-    /* { */
-
-    /*     // Fill out affordance info */
-    /*     affordance_util::ScrewInfo aff; */
-    /*     aff.type = "translation"; */
-    /*     aff.axis = Eigen::Vector3d(0.0, 0.0, 1.0); */
-
-    /*     // Configure the planner */
-    /*     cc_affordance_planner::PlannerConfig plannerConfig; */
-    /*     plannerConfig.accuracy = 10.0 / 100.0; */
-    /*     plannerConfig.aff_step = 0.02; */
-
-    /*     // Specify EE and gripper orientation goals */
-    /*     /1* const size_t gripper_control_par = 4; *1/ */
-    /*     const size_t gripper_control_par = 1; */
-    /*     Eigen::VectorXd goal = Eigen::VectorXd::Zero(gripper_control_par); */
-    /*     const double aff_goal = 0.08; */
-    /*     goal.tail(1)(0) = aff_goal; // End element */
-
-    /*     const std::string vir_screw_order = "none"; */
-    /*     return this->run_cc_affordance_planner(plannerConfig, aff, goal, gripper_control_par, vir_screw_order, */
-    /*                                            grasp_tune_upward_motion_status_); */
-    /* } */
-
-    bool execute_affordance_motion()
-    {
-
-        // Configure the planner
-        cc_affordance_planner::PlannerConfig planner_config;
-        planner_config.accuracy = 10.0 / 100.0;
-        planner_config.trajectory_density = 10;
-        planner_config.accuracy = 0.1;
-
-        // Provide affordance info
-        affordance_util::ScrewInfo aff;
-        aff.type = affordance_util::ScrewType::ROTATION;
-        aff.axis = Eigen::Vector3d(0, 0, 1);
-        aff.location = Eigen::Vector3d(0.0, 0.0, 0.0);
-        Eigen::VectorXd aff_goal = (Eigen::VectorXd(1) << (1.0 / 2.0) * M_PI).finished();
-
-        // Furnish task description
-        cc_affordance_planner::TaskDescription task_description;
-        task_description.motion_type = cc_affordance_planner::MotionType::AFFORDANCE;
-        task_description.affordance_info = aff;
-        task_description.nof_secondary_joints = 1; // affordance only
-        task_description.secondary_joint_goals = aff_goal;
-
-        // Optional robot start config for planning visualization without real robot
-        Eigen::VectorXd robot_start_config(6);
-        robot_start_config << 0.20841, -0.52536, 1.85988, 0.18575, -1.37188, -0.07426;
-
-        return this->run_cc_affordance_planner(planner_config, task_description, affordance_motion_status_,
-                                               robot_start_config);
-    }
-
-    /* bool execute_retract_motion() */
-    /* { */
-
-    /*     // Fill out affordance info */
-    /*     affordance_util::ScrewInfo aff; */
-    /*     aff.type = "translation"; */
-    /*     aff.axis = Eigen::Vector3d(0.0, 1.0, 0.0); */
-
-    /*     // Configure the planner */
-    /*     cc_affordance_planner::PlannerConfig plannerConfig; */
-    /*     plannerConfig.accuracy = 10.0 / 100.0; */
-    /*     plannerConfig.aff_step = 0.05; */
-
-    /*     // Specify EE and gripper orientation goals */
-    /*     /1* const size_t gripper_control_par = 4; *1/ */
-    /*     const size_t gripper_control_par = 1; */
-    /*     Eigen::VectorXd goal = Eigen::VectorXd::Zero(gripper_control_par); */
-    /*     const double aff_goal = 0.16; */
-    /*     goal.tail(1)(0) = aff_goal; // End element */
-
-    /*     const std::string vir_screw_order = "xyz"; */
-    /*     return this->run_cc_affordance_planner(plannerConfig, aff, goal, gripper_control_par, vir_screw_order, */
-    /*                                            retract_motion_status_); */
-    /* } */
-
-    /* bool execute_push_motion() */
-    /* { */
-
-    /*     // Fill out affordance info */
-    /*     affordance_util::ScrewInfo aff; */
-    /*     aff.type = "translation"; */
-    /*     aff.axis = Eigen::Vector3d(0.0, -1.0, 0.0); */
-
-    /*     // Configure the planner */
-    /*     cc_affordance_planner::PlannerConfig plannerConfig; */
-    /*     plannerConfig.accuracy = 10.0 / 100.0; */
-    /*     plannerConfig.aff_step = 0.02; */
-
-    /*     // Specify EE and gripper orientation goals */
-    /*     /1* const size_t gripper_control_par = 4; *1/ */
-    /*     const size_t gripper_control_par = 1; */
-    /*     Eigen::VectorXd goal = Eigen::VectorXd::Zero(gripper_control_par); */
-    /*     const double aff_goal = 0.08; */
-    /*     goal.tail(1)(0) = aff_goal; // End element */
-
-    /*     const std::string vir_screw_order = "xyz"; */
-    /*     return this->run_cc_affordance_planner(plannerConfig, aff, goal, gripper_control_par, vir_screw_order, */
-    /*                                            push_motion_status_); */
-    /* } */
 
     bool walk_back_to_start_pose_(const Eigen::Matrix4d &htm_start_pose)
     {
@@ -1031,7 +664,7 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
         return walk_success_;
     }
 
-    bool dock_robot()
+    bool dock_robot_()
     {
 
         // Wait for service to be available
@@ -1062,23 +695,17 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
             return false;
         }
     }
-    // Function to compute the Frobenius norm of a matrix
-    double computeFrobeniusNorm(const Eigen::Matrix4d &matrix) { return matrix.norm(); }
 
     // Function to find the matrix closest to the median norm
-    Eigen::Matrix4d findMedianNormMatrix(const std::vector<Eigen::Matrix4d> &matrices)
+    Eigen::Matrix4d findMedianNormMatrix_(const std::vector<Eigen::Matrix4d> &matrices)
     {
-        if (matrices.empty())
-        {
-            throw std::invalid_argument("The matrix list is empty.");
-        }
 
         std::vector<double> norms;
         norms.reserve(matrices.size());
 
         for (const auto &matrix : matrices)
         {
-            norms.push_back(computeFrobeniusNorm(matrix));
+            norms.push_back(matrix.norm());
         }
 
         // Sort norms and find the median
@@ -1100,7 +727,7 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
 
         for (const auto &matrix : matrices)
         {
-            double norm = computeFrobeniusNorm(matrix);
+            double norm = matrix.norm();
             double diff = std::abs(norm - medianNorm);
 
             if (diff < minDiff)
@@ -1112,17 +739,169 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
 
         return closestMatrix;
     }
+
+    std::pair<cc_affordance_planner::PlannerConfig, cc_affordance_planner::TaskDescription>
+    get_planner_config_and_task_description_(const DemoMotion &demo_motion,
+                                             const Eigen::Matrix4d &approach_pose = Eigen::Matrix4d())
+    {
+        // Default planner info
+        cc_affordance_planner::PlannerConfig planner_config;
+        planner_config.accuracy = 10.0 / 100.0;
+        planner_config.trajectory_density = 10;
+
+        affordance_util::ScrewInfo aff;
+        Eigen::VectorXd aff_goal;
+        cc_affordance_planner::TaskDescription task_description;
+
+        switch (demo_motion)
+        {
+        case DemoMotion::PREAPPROACH_FORWARD:
+            // Affordance info
+            aff.type = affordance_util::ScrewType::TRANSLATION;
+            aff.axis = Eigen::Vector3d(1.0, 0.0, 0.0);
+            aff.location = Eigen::Vector3d(0.0, 0.0, 0.0);
+            aff_goal = (Eigen::VectorXd(1) << 0.24).finished();
+
+            // Task description
+            task_description.affordance_info = aff;
+            task_description.nof_secondary_joints = 1; // affordance only
+            task_description.secondary_joint_goals = aff_goal;
+            break;
+
+        case DemoMotion::APPROACH:
+            // Planner info
+            planner_config.accuracy = 10.0 / 100.0;
+            planner_config.trajectory_density = 10;
+
+            // Affordance info
+            aff.type = affordance_util::ScrewType::ROTATION;
+            aff.axis = Eigen::Vector3d(0, 0, 1);
+            aff.location = Eigen::Vector3d(0.0, 0.0, 0.0);
+            aff_goal = (Eigen::VectorXd(1) << 0.0).finished();
+
+            // Task description
+            task_description.motion_type = cc_affordance_planner::MotionType::APPROACH;
+            task_description.affordance_info = aff;
+            task_description.nof_secondary_joints = 2; // affordance only
+            task_description.secondary_joint_goals = (Eigen::VectorXd(2) << 0, aff_goal).finished();
+            task_description.grasp_pose = approach_pose;
+            break;
+
+        case DemoMotion::GRASPTUNE_FORWARD:
+            // Affordance info
+            aff.type = affordance_util::ScrewType::TRANSLATION;
+            aff.axis = Eigen::Vector3d(1.0, 0.0, 0.0);
+            aff.location = Eigen::Vector3d(0.0, 0.0, 0.0);
+            aff_goal = (Eigen::VectorXd(1) << 0.25).finished();
+
+            // Task description
+            task_description.affordance_info = aff;
+            task_description.nof_secondary_joints = 1; // affordance only
+            task_description.secondary_joint_goals = aff_goal;
+            break;
+
+        case DemoMotion::GRASPTUNE_UPWARD:
+            // Affordance info
+            aff.type = affordance_util::ScrewType::TRANSLATION;
+            aff.axis = Eigen::Vector3d(0.0, 0.0, 1.0);
+            aff.location = Eigen::Vector3d(0.0, 0.0, 0.0);
+            aff_goal = (Eigen::VectorXd(1) << 0.08).finished();
+
+            // Task description
+            task_description.affordance_info = aff;
+            task_description.nof_secondary_joints = 1; // affordance only
+            task_description.secondary_joint_goals = aff_goal;
+            task_description.vir_screw_order = affordance_util::VirtualScrewOrder::NONE;
+            break;
+
+        case DemoMotion::AFFORDANCE:
+
+            // Affordance info
+            aff.type = affordance_util::ScrewType::ROTATION;
+            aff.axis = Eigen::Vector3d(0, 0, 1);
+            aff.location = Eigen::Vector3d(0.0, 0.0, 0.0);
+            aff_goal = (Eigen::VectorXd(1) << (1.0 / 2.0) * M_PI).finished();
+
+            // Task description
+            task_description.affordance_info = aff;
+            task_description.nof_secondary_joints = 1; // affordance only
+            task_description.secondary_joint_goals = aff_goal;
+            break;
+
+        case DemoMotion::PUSH:
+            // Affordance info
+            aff.type = affordance_util::ScrewType::TRANSLATION;
+            aff.axis = Eigen::Vector3d(0.0, -1.0, 0.0);
+            aff.location = Eigen::Vector3d(0.0, 0.0, 0.0);
+            aff_goal = (Eigen::VectorXd(1) << 0.08).finished();
+
+            // Task description
+            task_description.affordance_info = aff;
+            task_description.nof_secondary_joints = 1; // affordance only
+            task_description.secondary_joint_goals = aff_goal;
+            break;
+
+        case DemoMotion::RETRACT:
+            // Affordance info
+            aff.type = affordance_util::ScrewType::TRANSLATION;
+            aff.location = Eigen::Vector3d(0.0, 0.0, 0.0);
+            aff.axis = Eigen::Vector3d(0.0, 1.0, 0.0);
+            aff_goal = (Eigen::VectorXd(1) << 0.16).finished();
+
+            // Task description
+            task_description.affordance_info = aff;
+            task_description.nof_secondary_joints = 1; // affordance only
+            task_description.secondary_joint_goals = aff_goal;
+            break;
+        }
+
+        return std::make_pair(planner_config, task_description);
+    }
+    Eigen::Matrix4d get_approach_pose_()
+    {
+
+        // Lookup and compute approach pose
+        /* const Eigen::Isometry3d htm_r2c = */
+        /*     affordance_util_ros::get_htm(ref_frame_, chair_frame_, *tf_buffer_); // reference frame to chair */
+
+        /* if (htm_r2c.matrix().isApprox(Eigen::Matrix4d::Identity())) */
+        /* { */
+        /*     RCLCPP_ERROR(this->get_logger(), "Could not lookup %s frame. Shutting down.", chair_frame_.c_str());
+         */
+        /* return Eigen::Matrix4d(); */
+        /* } */
+
+        /* Eigen::Matrix4d approach_pose = htm_r2c.matrix() * htm_c2a_;            // adjust y offset in the chair
+         * frame
+         */
+        /* approach_pose(2, 3) = htm_r2c.matrix()(2, 3) + approach_pose_z_offset_; // adjust z offset in the ref
+         * frame
+         */
+        /* approach_pose.block<3, 3>(0, 0) = Eigen::Matrix3d::Identity(); */
+        Eigen::Matrix4d approach_pose;
+        approach_pose << 0.998453, 0.0378028, 0.0407843, 0.529228, -0.0380367, 0.999264, 0.00497515, -0.16148,
+            -0.0405662, -0.00651876, 0.999156, 0.100135, 0, 0, 0, 1;
+
+        // Change the approach pose orientation about the x axis
+        Eigen::Matrix4d rot_x;
+        /* double theta = 0.0; */
+        double theta = M_PI / 2;
+        /* double theta = (2.0/3.0)*M_PI; */
+        rot_x << 1, 0, 0, 0, 0, cos(theta), -sin(theta), 0, 0, sin(theta), cos(theta), 0, 0, 0, 0, 1;
+        approach_pose = approach_pose * rot_x;
+
+        return approach_pose;
+    }
 };
 int main(int argc, char **argv)
 {
     rclcpp::init(argc, argv);
     rclcpp::NodeOptions node_options;
     node_options.automatically_declare_parameters_from_overrides(true);
-    /* auto node = std::make_shared<CcAffordancePlannerRos>("cc_affordance_planner_ros", node_options); */
     auto node = std::make_shared<WalkToAndMoveChair>("cc_affordance_planner_ros", node_options);
 
-    // Start spinning the node in a separate thread so we could do things like reading parameters and joint states
-    // inside the node
+    // Start spinning the node in a separate thread so we could do things like reading parameters and joint
+    // states inside the node
     std::thread spinner_thread([&node]() { rclcpp::spin(node); });
 
     // Run the demo
