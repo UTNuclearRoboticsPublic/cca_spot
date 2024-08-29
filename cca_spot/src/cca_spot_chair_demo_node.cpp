@@ -900,7 +900,7 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
         case DemoMotion::PUSH:
             // Affordance info
             aff.type = affordance_util::ScrewType::TRANSLATION;
-            aff.axis = Eigen::Vector3d(0.0, -1.0, 0.0);
+            aff.axis = Eigen::Vector3d(0.0, 1.0, 0.0);
             aff.location = Eigen::Vector3d(0.0, 0.0, 0.0);
             aff_goal = (Eigen::VectorXd(1) << 0.08).finished();
 
@@ -914,7 +914,7 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
             // Affordance info
             aff.type = affordance_util::ScrewType::TRANSLATION;
             aff.location = Eigen::Vector3d(0.0, 0.0, 0.0);
-            aff.axis = Eigen::Vector3d(0.0, 1.0, 0.0);
+            aff.axis = Eigen::Vector3d(0.0, -1.0, 0.0);
             aff_goal = (Eigen::VectorXd(1) << 0.16).finished();
 
             // Task description
