@@ -84,7 +84,8 @@ get_example_planner_config_and_task_description(const ExampleType &example_type)
         aff.type = affordance_util::ScrewType::ROTATION;
         aff.axis = Eigen::Vector3d(0, 0, 1);
         aff.location = Eigen::Vector3d(0.0, 0.0, 0.0);
-        aff_goal = (Eigen::VectorXd(1) << 0.0).finished();
+        aff_goal = (Eigen::VectorXd(1) << (1.0 / 2.0) * M_PI).finished();
+        /* aff_goal = (Eigen::VectorXd(1) << 0.0).finished(); */
 
         Eigen::Matrix4d approach_pose;
         approach_pose << 0.998453, 0.0378028, 0.0407843, 0.529228, -0.0380367, 0.999264, 0.00497515, -0.16148,
@@ -131,8 +132,9 @@ int main(int argc, char **argv)
     rclcpp::sleep_for(std::chrono::seconds(1)); // Sleep for 1 second to ensure ROS is initialized properly
 
     /// REQUIRED INPUT: Planner configuration and task description. Example provided below.
-    auto [planner_config, task_description] =
-        get_example_planner_config_and_task_description(ExampleType::AFFORDANCE_ROTATION);
+    auto [planner_config, task_description] = get_example_planner_config_and_task_description(ExampleType::APPROACH);
+    /* auto [planner_config, task_description] = */
+    /*     get_example_planner_config_and_task_description(ExampleType::AFFORDANCE_ROTATION); */
 
     /*******************************************/
     // BASIC USE CASE: Plan and execute a joint trajectory for a given task from the current robot configuration
@@ -159,6 +161,11 @@ int main(int argc, char **argv)
         (Eigen::VectorXd(6) << 0.0, -1.09419, 2.2496, -0.567882, -0.796551,
          0.396139)
             .finished(); // Example robot configuration for planning and visualization
+    /* const Eigen::VectorXd STOW_CONFIG = */
+    /*     (Eigen::VectorXd(6) << 0.015582084655761719, -3.13411283493042, 3.1333792209625244, 1.5574960708618164, */
+    /*      -0.0033998489379882812, -1.571157455444336) */
+    /*         .finished(); */
+    /* const Eigen::VectorXd robot_start_config = STOW_CONFIG; */
     auto motion_status =
         std::make_shared<cc_affordance_planner_ros::Status>(cc_affordance_planner_ros::Status::UNKNOWN);
 
