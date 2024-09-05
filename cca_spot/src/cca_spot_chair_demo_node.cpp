@@ -134,13 +134,13 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
 
         /********************************************************/
 
-        RCLCPP_INFO(this->get_logger(), "Opening gripper");
-        if (!open_gripper_())
-        {
+        /* RCLCPP_INFO(this->get_logger(), "Opening gripper"); */
+        /* if (!open_gripper_()) */
+        /* { */
 
-            RCLCPP_ERROR(this->get_logger(), "Opening gripper failed");
-            return;
-        }
+        /*     RCLCPP_ERROR(this->get_logger(), "Opening gripper failed"); */
+        /*     return; */
+        /* } */
         /********************************************************/
         if (!(this->execute_motion_(DemoMotion::GRASPTUNE_FORWARD, "grasp-tune-forward motion")))
         {
@@ -154,13 +154,13 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
         }
         /********************************************************/
 
-        RCLCPP_INFO(this->get_logger(), "Closing gripper");
-        if (!close_gripper_())
-        {
+        /* RCLCPP_INFO(this->get_logger(), "Closing gripper"); */
+        /* if (!close_gripper_()) */
+        /* { */
 
-            RCLCPP_ERROR(this->get_logger(), "Closing gripper failed");
-            return;
-        }
+        /*     RCLCPP_ERROR(this->get_logger(), "Closing gripper failed"); */
+        /*     return; */
+        /* } */
         /********************************************************/
         if (!(this->execute_motion_(DemoMotion::AFFORDANCE, "affordance motion")))
         {
@@ -175,13 +175,13 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
 
         /********************************************************/
 
-        RCLCPP_INFO(this->get_logger(), "Opening gripper");
-        if (!open_gripper_())
-        {
+        /* RCLCPP_INFO(this->get_logger(), "Opening gripper"); */
+        /* if (!open_gripper_()) */
+        /* { */
 
-            RCLCPP_ERROR(this->get_logger(), "Opening gripper failed");
-            return;
-        }
+        /*     RCLCPP_ERROR(this->get_logger(), "Opening gripper failed"); */
+        /*     return; */
+        /* } */
         /********************************************************/
         if (!(this->execute_motion_(DemoMotion::RETRACT, "retract motion")))
         {
@@ -812,12 +812,11 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
     {
         // Default planner info
         cc_affordance_planner::PlannerConfig planner_config;
-        planner_config.accuracy = 10.0 / 100.0;
-        planner_config.trajectory_density = 10;
 
         affordance_util::ScrewInfo aff;
         Eigen::VectorXd aff_goal;
         cc_affordance_planner::TaskDescription task_description;
+        task_description.trajectory_density = 5;
 
         switch (demo_motion)
         {
@@ -826,19 +825,16 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
             aff.type = affordance_util::ScrewType::TRANSLATION;
             aff.axis = Eigen::Vector3d(1.0, 0.0, 0.0);
             aff.location = Eigen::Vector3d(0.0, 0.0, 0.0);
-            aff_goal = (Eigen::VectorXd(1) << 0.24).finished();
 
             // Task description
             task_description.affordance_info = aff;
-            task_description.nof_secondary_joints = 1; // affordance only
-            task_description.secondary_joint_goals = aff_goal;
+            task_description.goal.affordance = 0.24;
+            task_description.goal.gripper = 0.0;
             break;
 
         case DemoMotion::APPROACH:
             // Planner info
-            /* planner_config.accuracy = 10.0 / 100.0; */
             planner_config.accuracy = 5.0 / 100.0;
-            planner_config.trajectory_density = 10;
 
             // Affordance info
             aff.type = affordance_util::ScrewType::ROTATION;
@@ -848,12 +844,13 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
 
             // Task description
             task_description.motion_type = cc_affordance_planner::MotionType::APPROACH;
+            task_description.gripper_goal_type = affordance_util::GripperGoalType::CONTINUOUS;
             task_description.affordance_info = aff;
-            /* task_description.nof_secondary_joints = 2; // affordance only */
-            /* task_description.secondary_joint_goals = (Eigen::VectorXd(2) << 0, aff_goal).finished(); */
-            task_description.nof_secondary_joints = 5; // affordance only
-            task_description.secondary_joint_goals = (Eigen::VectorXd(5) << 1e-7, 1e-7, 1e-7, 0.0, aff_goal).finished();
-            task_description.grasp_pose = approach_pose;
+            task_description.trajectory_density = 10;
+            task_description.goal.affordance = 1e-7;
+            task_description.goal.ee_orientation = Eigen::Vector3d::Constant(1e-7);
+            task_description.goal.grasp_pose = approach_pose;
+            task_description.goal.gripper = -(1.0 / 2.0) * M_PI;
             break;
 
         case DemoMotion::GRASPTUNE_FORWARD:
@@ -861,12 +858,11 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
             aff.type = affordance_util::ScrewType::TRANSLATION;
             aff.axis = Eigen::Vector3d(1.0, 0.0, 0.0);
             aff.location = Eigen::Vector3d(0.0, 0.0, 0.0);
-            aff_goal = (Eigen::VectorXd(1) << 0.25).finished();
 
             // Task description
             task_description.affordance_info = aff;
-            task_description.nof_secondary_joints = 1; // affordance only
-            task_description.secondary_joint_goals = aff_goal;
+            task_description.goal.affordance = 0.25;
+            task_description.goal.gripper = -(1.0 / 2.0) * M_PI;
             break;
 
         case DemoMotion::GRASPTUNE_UPWARD:
@@ -874,13 +870,12 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
             aff.type = affordance_util::ScrewType::TRANSLATION;
             aff.axis = Eigen::Vector3d(0.0, 0.0, 1.0);
             aff.location = Eigen::Vector3d(0.0, 0.0, 0.0);
-            aff_goal = (Eigen::VectorXd(1) << 0.08).finished();
 
             // Task description
-            task_description.affordance_info = aff;
-            task_description.nof_secondary_joints = 1; // affordance only
-            task_description.secondary_joint_goals = aff_goal;
             task_description.vir_screw_order = affordance_util::VirtualScrewOrder::NONE;
+            task_description.affordance_info = aff;
+            task_description.goal.affordance = 0.08;
+            task_description.goal.gripper = -(1.0 / 2.0) * M_PI;
             break;
 
         case DemoMotion::AFFORDANCE:
@@ -889,12 +884,12 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
             aff.type = affordance_util::ScrewType::ROTATION;
             aff.axis = Eigen::Vector3d(0, 0, -1);
             aff.location = Eigen::Vector3d(0.0, 0.0, 0.0);
-            aff_goal = (Eigen::VectorXd(1) << (1.0 / 2.0) * M_PI).finished();
 
             // Task description
+            task_description.trajectory_density = 10;
             task_description.affordance_info = aff;
-            task_description.nof_secondary_joints = 1; // affordance only
-            task_description.secondary_joint_goals = aff_goal;
+            task_description.goal.affordance = (1.0 / 2.0) * M_PI;
+            task_description.goal.gripper = 0.0;
             break;
 
         case DemoMotion::PUSH:
@@ -902,12 +897,11 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
             aff.type = affordance_util::ScrewType::TRANSLATION;
             aff.axis = Eigen::Vector3d(0.0, 1.0, 0.0);
             aff.location = Eigen::Vector3d(0.0, 0.0, 0.0);
-            aff_goal = (Eigen::VectorXd(1) << 0.08).finished();
 
             // Task description
             task_description.affordance_info = aff;
-            task_description.nof_secondary_joints = 1; // affordance only
-            task_description.secondary_joint_goals = aff_goal;
+            task_description.goal.affordance = 0.08;
+            task_description.goal.gripper = 0.0;
             break;
 
         case DemoMotion::RETRACT:
@@ -915,12 +909,11 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
             aff.type = affordance_util::ScrewType::TRANSLATION;
             aff.location = Eigen::Vector3d(0.0, 0.0, 0.0);
             aff.axis = Eigen::Vector3d(0.0, -1.0, 0.0);
-            aff_goal = (Eigen::VectorXd(1) << 0.16).finished();
 
             // Task description
             task_description.affordance_info = aff;
-            task_description.nof_secondary_joints = 1; // affordance only
-            task_description.secondary_joint_goals = aff_goal;
+            task_description.goal.affordance = 0.16;
+            task_description.goal.gripper = -(1.0 / 2.0) * M_PI;
             break;
         }
 

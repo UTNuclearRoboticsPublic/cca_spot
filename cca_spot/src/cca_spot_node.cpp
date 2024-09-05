@@ -27,81 +27,6 @@
 #include <cc_affordance_planner/cc_affordance_planner_interface.hpp>
 #include <cc_affordance_planner_ros/cc_affordance_planner_ros.hpp>
 
-enum ExampleType
-{
-    AFFORDANCE_TRANSLATION,
-    AFFORDANCE_ROTATION,
-    AFFORDANCE_SCREW,
-    APPROACH,
-};
-
-// Function to generate example planner configurations and task descriptions based on the ExampleType
-std::pair<cc_affordance_planner::PlannerConfig, cc_affordance_planner::TaskDescription>
-get_example_planner_config_and_task_description(const ExampleType &example_type)
-{
-    cc_affordance_planner::PlannerConfig planner_config;
-    planner_config.accuracy = 10.0 / 100.0;
-    planner_config.trajectory_density = 10;
-
-    affordance_util::ScrewInfo aff;
-    Eigen::VectorXd aff_goal;
-    cc_affordance_planner::TaskDescription task_description;
-
-    switch (example_type)
-    {
-    case ExampleType::AFFORDANCE_ROTATION:
-        aff.type = affordance_util::ScrewType::ROTATION;
-        aff.axis = Eigen::Vector3d(0, 0, 1);
-        aff.location = Eigen::Vector3d(0.0, 0.0, 0.0);
-        aff_goal = (Eigen::VectorXd(1) << (1.0 / 2.0) * M_PI).finished();
-        task_description.affordance_info = aff;
-        task_description.nof_secondary_joints = 1;
-        task_description.secondary_joint_goals = aff_goal;
-        break;
-
-    case ExampleType::AFFORDANCE_TRANSLATION:
-        aff.type = affordance_util::ScrewType::TRANSLATION;
-        aff.axis = Eigen::Vector3d(1.0, 0.0, 0.0);
-        aff.location = Eigen::Vector3d(0.0, 0.0, 0.0);
-        aff_goal = (Eigen::VectorXd(1) << 0.24).finished();
-        task_description.affordance_info = aff;
-        task_description.nof_secondary_joints = 1;
-        task_description.secondary_joint_goals = aff_goal;
-        break;
-
-    case ExampleType::AFFORDANCE_SCREW:
-        aff.type = affordance_util::ScrewType::SCREW;
-        aff.axis = Eigen::Vector3d(0, 0, 1);
-        aff.location = Eigen::Vector3d(0.0, 0.0, 0.0);
-        aff.pitch = 0.5;
-        aff_goal = (Eigen::VectorXd(1) << (1.0 / 2.0) * M_PI).finished();
-        task_description.affordance_info = aff;
-        task_description.nof_secondary_joints = 1;
-        task_description.secondary_joint_goals = aff_goal;
-        break;
-
-    case ExampleType::APPROACH:
-        aff.type = affordance_util::ScrewType::ROTATION;
-        aff.axis = Eigen::Vector3d(0, 0, 1);
-        aff.location = Eigen::Vector3d(0.0, 0.0, 0.0);
-        aff_goal = (Eigen::VectorXd(1) << (1.0 / 2.0) * M_PI).finished();
-        /* aff_goal = (Eigen::VectorXd(1) << 0.0).finished(); */
-
-        Eigen::Matrix4d approach_pose;
-        approach_pose << 0.998453, 0.0378028, 0.0407843, 0.529228, -0.0380367, 0.999264, 0.00497515, -0.16148,
-            -0.0405662, -0.00651876, 0.999156, 0.100135, 0, 0, 0, 1;
-
-        task_description.motion_type = cc_affordance_planner::MotionType::APPROACH;
-        task_description.affordance_info = aff;
-        task_description.nof_secondary_joints = 2;
-        task_description.secondary_joint_goals = (Eigen::VectorXd(2) << 0, aff_goal).finished();
-        task_description.grasp_pose = approach_pose;
-        break;
-    }
-
-    return std::make_pair(planner_config, task_description);
-}
-
 // Function to block until the robot completes the planned trajectory
 void block_until_trajectory_execution(const std::shared_ptr<cc_affordance_planner_ros::Status> &motion_status,
                                       const rclcpp::Logger &logger)
@@ -131,10 +56,9 @@ int main(int argc, char **argv)
 
     rclcpp::sleep_for(std::chrono::seconds(1)); // Sleep for 1 second to ensure ROS is initialized properly
 
-    /// REQUIRED INPUT: Planner configuration and task description. Example provided below.
-    auto [planner_config, task_description] = get_example_planner_config_and_task_description(ExampleType::APPROACH);
-    /* auto [planner_config, task_description] = */
-    /*     get_example_planner_config_and_task_description(ExampleType::AFFORDANCE_ROTATION); */
+    /// REQUIRED INPUT: Task description. See repo README.md Task Examples.
+    cc_affordance_planner::TaskDescription task_description; /// You must fill this out.
+    cc_affordance_planner::PlannerConfig planner_config;     /// Fill this out optionally.
 
     /*******************************************/
     // BASIC USE CASE: Plan and execute a joint trajectory for a given task from the current robot configuration
