@@ -17,6 +17,7 @@
 #include <spot_msgs/srv/dock.hpp>
 #include <tf2_ros/buffer.h>
 
+using namespace std::chrono_literals;
 class WalkToAndMoveChair : public cca_ros::CcaRos
 {
   public:
@@ -34,8 +35,9 @@ class WalkToAndMoveChair : public cca_ros::CcaRos
         RETRACT
     };
 
-    explicit WalkToAndMoveChair(const std::string &node_name, const rclcpp::NodeOptions &node_options)
-        : cca_ros::CcaRos(node_name, node_options),
+    explicit WalkToAndMoveChair(const std::string &node_name, const rclcpp::NodeOptions &node_options,
+                                bool visualize_trajectory, bool execute_trajectory)
+        : cca_ros::CcaRos(node_name, node_options, visualize_trajectory, execute_trajectory),
           walk_action_server_name_("/spot_driver/walk_to"),
           gripper_open_server_name_("/spot_manipulation_driver/open_gripper"),
           gripper_close_server_name_("/spot_manipulation_driver/close_gripper"),
@@ -968,7 +970,7 @@ int main(int argc, char **argv)
     rclcpp::init(argc, argv);
     rclcpp::NodeOptions node_options;
     node_options.automatically_declare_parameters_from_overrides(true);
-    auto node = std::make_shared<WalkToAndMoveChair>("cca_ros", node_options);
+    auto node = std::make_shared<WalkToAndMoveChair>("cca_ros", node_options, true, true);
 
     // Start spinning the node in a separate thread so we could do things like reading parameters and joint
     // states inside the node
