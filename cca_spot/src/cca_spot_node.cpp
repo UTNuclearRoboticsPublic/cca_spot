@@ -25,16 +25,16 @@
 #include <affordance_util/affordance_util.hpp>
 #include <cc_affordance_planner/cc_affordance_planner.hpp>
 #include <cc_affordance_planner/cc_affordance_planner_interface.hpp>
-#include <cc_affordance_planner_ros/cc_affordance_planner_ros.hpp>
+#include <cca_ros/cca_ros.hpp>
 
 // Function to block until the robot completes the planned trajectory
-void block_until_trajectory_execution(const std::shared_ptr<cc_affordance_planner_ros::Status> &motion_status,
+void block_until_trajectory_execution(const std::shared_ptr<cca_ros::Status> &motion_status,
                                       const rclcpp::Logger &logger)
 {
     rclcpp::Rate loop_rate(4);
-    while (*motion_status != cc_affordance_planner_ros::Status::SUCCEEDED)
+    while (*motion_status != cca_ros::Status::SUCCEEDED)
     {
-        if (*motion_status == cc_affordance_planner_ros::Status::UNKNOWN)
+        if (*motion_status == cca_ros::Status::UNKNOWN)
         {
             RCLCPP_ERROR(logger, "Motion was interrupted mid-execution.");
         }
@@ -47,8 +47,7 @@ int main(int argc, char **argv)
     rclcpp::init(argc, argv);
     rclcpp::NodeOptions node_options;
     node_options.automatically_declare_parameters_from_overrides(true);
-    auto node =
-        std::make_shared<cc_affordance_planner_ros::CcAffordancePlannerRos>("cc_affordance_planner_ros", node_options);
+    auto node = std::make_shared<cca_ros::CcaRos>("cca_ros", node_options);
 
     // Start spinning the node in a separate thread to enable ROS functionalities like parameter reading and joint
     // states
@@ -70,7 +69,7 @@ int main(int argc, char **argv)
     /*******************************************/
     // OPTIONAL USE CASE 1: Plan, visualize, and execute while tracking the planning and execution status
     /* auto motion_status = */
-    /*     std::make_shared<cc_affordance_planner_ros::Status>(cc_affordance_planner_ros::Status::UNKNOWN); */
+    /*     std::make_shared<cca_ros::Status>(cca_ros::Status::UNKNOWN); */
     /* if (!(node->run_cc_affordance_planner(planner_config, task_description, motion_status))) */
     /* { */
     /*     RCLCPP_ERROR(node->get_logger(), "Planning and execution failed"); */
@@ -81,19 +80,19 @@ int main(int argc, char **argv)
 
     /*******************************************/
     // OPTIONAL USE CASE 2: Plan, visualize, and execute from a desired start robot configuration
-    const Eigen::VectorXd robot_start_config =
-        (Eigen::VectorXd(6) << 0.0, -1.09419, 2.2496, -0.567882, -0.796551,
-         0.396139)
-            .finished(); // Example robot configuration for planning and visualization
+    cca_ros::KinematicState start_config;
+    start_config.robot = (Eigen::VectorXd(6) << 0.0, -1.09419, 2.2496, -0.567882, -0.796551,
+                          0.396139)
+                             .finished(); // Example robot configuration for planning and visualization
+    start_config.gripper = 0;
     /* const Eigen::VectorXd STOW_CONFIG = */
     /*     (Eigen::VectorXd(6) << 0.015582084655761719, -3.13411283493042, 3.1333792209625244, 1.5574960708618164, */
     /*      -0.0033998489379882812, -1.571157455444336) */
     /*         .finished(); */
     /* const Eigen::VectorXd robot_start_config = STOW_CONFIG; */
-    auto motion_status =
-        std::make_shared<cc_affordance_planner_ros::Status>(cc_affordance_planner_ros::Status::UNKNOWN);
+    auto motion_status = std::make_shared<cca_ros::Status>(cca_ros::Status::UNKNOWN);
 
-    if (!(node->run_cc_affordance_planner(planner_config, task_description, motion_status, robot_start_config)))
+    if (!(node->run_cc_affordance_planner(planner_config, task_description, motion_status, start_config)))
     {
         RCLCPP_ERROR(node->get_logger(), "Planning and execution failed");
         rclcpp::shutdown();

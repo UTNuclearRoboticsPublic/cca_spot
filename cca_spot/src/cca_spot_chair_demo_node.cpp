@@ -11,13 +11,13 @@
 #include <affordance_util/affordance_util.hpp>
 #include <algorithm>
 #include <cc_affordance_planner/cc_affordance_planner.hpp>
-#include <cc_affordance_planner_ros/cc_affordance_planner_ros.hpp>
+#include <cca_ros/cca_ros.hpp>
 #include <optional>
 #include <spot_msgs/action/walk_to.hpp>
 #include <spot_msgs/srv/dock.hpp>
 #include <tf2_ros/buffer.h>
 
-class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlannerRos
+class WalkToAndMoveChair : public cca_ros::CcaRos
 {
   public:
     using WalkTo = spot_msgs::action::WalkTo;
@@ -35,7 +35,7 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
     };
 
     explicit WalkToAndMoveChair(const std::string &node_name, const rclcpp::NodeOptions &node_options)
-        : cc_affordance_planner_ros::CcAffordancePlannerRos(node_name, node_options),
+        : cca_ros::CcaRos(node_name, node_options),
           walk_action_server_name_("/spot_driver/walk_to"),
           gripper_open_server_name_("/spot_manipulation_driver/open_gripper"),
           gripper_close_server_name_("/spot_manipulation_driver/close_gripper"),
@@ -295,8 +295,7 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
                          const Eigen::Matrix4d &approach_pose = Eigen::Matrix4d())
     {
         // Start motion status as unknown
-        auto motion_status =
-            std::make_shared<cc_affordance_planner_ros::Status>(cc_affordance_planner_ros::Status::UNKNOWN);
+        auto motion_status = std::make_shared<cca_ros::Status>(cca_ros::Status::UNKNOWN);
 
         RCLCPP_INFO(this->get_logger(), "Executing %s motion", motion_name.c_str());
 
@@ -304,7 +303,7 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
             this->get_planner_config_and_task_description_(demo_motion, approach_pose);
 
         // Execute the specified motion
-        /* cc_affordance_planner_ros::KinematicState start_config; */
+        /* cca_ros::KinematicState start_config; */
         /* start_config.robot = robot_start_config_; */
         /* start_config.gripper = gripper_start_config_; */
         /* if (!(this->run_cc_affordance_planner(planner_config, task_description, motion_status, */
@@ -317,9 +316,9 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
 
         // Check status
         rclcpp::Rate loop_rate(4);
-        while (*motion_status != cc_affordance_planner_ros::Status::SUCCEEDED)
+        while (*motion_status != cca_ros::Status::SUCCEEDED)
         {
-            if (*motion_status == cc_affordance_planner_ros::Status::UNKNOWN)
+            if (*motion_status == cca_ros::Status::UNKNOWN)
             {
 
                 RCLCPP_ERROR(this->get_logger(), "%s motion was interrupted mid-execution.", motion_name.c_str());
@@ -340,8 +339,7 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
                          const Eigen::Matrix4d &approach_pose = Eigen::Matrix4d())
     {
         // Start motion status as unknown
-        auto motion_status =
-            std::make_shared<cc_affordance_planner_ros::Status>(cc_affordance_planner_ros::Status::UNKNOWN);
+        auto motion_status = std::make_shared<cca_ros::Status>(cca_ros::Status::UNKNOWN);
 
         RCLCPP_INFO(this->get_logger(), "Executing %s motion", motion_name.c_str());
 
@@ -358,7 +356,7 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
         }
 
         // Execute the specified motion
-        /* cc_affordance_planner_ros::KinematicState start_config; */
+        /* cca_ros::KinematicState start_config; */
         /* start_config.robot = robot_start_config_; */
         /* start_config.gripper = gripper_start_config_; */
         /* if (!(this->run_cc_affordance_planner(planner_configs, task_descriptions, motion_status, start_config,
@@ -372,9 +370,9 @@ class WalkToAndMoveChair : public cc_affordance_planner_ros::CcAffordancePlanner
 
         // Check status
         rclcpp::Rate loop_rate(4);
-        while (*motion_status != cc_affordance_planner_ros::Status::SUCCEEDED)
+        while (*motion_status != cca_ros::Status::SUCCEEDED)
         {
-            if (*motion_status == cc_affordance_planner_ros::Status::UNKNOWN)
+            if (*motion_status == cca_ros::Status::UNKNOWN)
             {
 
                 RCLCPP_ERROR(this->get_logger(), "%s motion was interrupted mid-execution.", motion_name.c_str());
@@ -970,7 +968,7 @@ int main(int argc, char **argv)
     rclcpp::init(argc, argv);
     rclcpp::NodeOptions node_options;
     node_options.automatically_declare_parameters_from_overrides(true);
-    auto node = std::make_shared<WalkToAndMoveChair>("cc_affordance_planner_ros", node_options);
+    auto node = std::make_shared<WalkToAndMoveChair>("cca_ros", node_options);
 
     // Start spinning the node in a separate thread so we could do things like reading parameters and joint
     // states inside the node

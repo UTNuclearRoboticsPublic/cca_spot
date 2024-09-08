@@ -47,9 +47,9 @@ This repository contains the `cca_spot` package to implement the closed-chain af
    ros2 launch spot_arm_moveit2_config spot_arm_planning_execution.launch.py joint_state_topic:=/spot_driver/joint_states
    ```
 
-4. Run the planning visualization server. Then, in RViz, add MarkerArray with publishing topic, `/ee_trajectory`.
+4. Run the planning visualization server. Then, in RViz, add MarkerArray with publishing topic, `/rviz_visual_tools`.
    ```
-   ros2 run moveit_plan_and_viz moveit_plan_and_viz_node
+   ros2 run cca_ros_viz cca_ros_viz_node
    ```
 
 5. Load closed-chain affordance description for Spot and run the closed-chain affordance planner node:

@@ -10,7 +10,7 @@
   <buildtool_depend>ament_cmake</buildtool_depend>
 
   <depend>rclcpp</depend>
-  <depend>cc_affordance_planner_ros</depend>
+  <depend>cca_ros</depend>
   <depend>spot_msgs</depend>
 
   <test_depend>ament_lint_auto</test_depend>
