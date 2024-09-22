@@ -1,0 +1,14 @@
+####################################################################################
+# ROS-related attributes pertaining to Spot for visualization of joint trajectories#
+####################################################################################
+
+cca_ros_viz:
+  ros__parameters:
+
+    joint_states_topic: "/spot_driver/joint_states" # Joint states topic name
+
+    planning_group: "arm" # MoveIt planning group name
+
+    ee_link: "arm0_fingers" # End-effector link in the planning group
+
+    rviz_fixed_frame: "base_link" # Fixed frame for viewing in Rviz

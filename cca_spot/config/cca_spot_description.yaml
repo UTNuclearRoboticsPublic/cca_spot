@@ -3,7 +3,7 @@
 ref_frame:
   - name: arm0_base_link
 
-joints:
+robot_joints:
   - name: arm0_shoulder_yaw
     w: [0, 0, 1]
     q: [0, 0, 0]
@@ -27,6 +27,9 @@ joints:
   - name: arm0_wrist_roll
     w: [1, 0, 0]
     q: [0.7428, -0.0003, 0.0693]
+
+gripper_joint:
+  - name: arm0_fingers
 
 tool:
   - name: arm0_tool0

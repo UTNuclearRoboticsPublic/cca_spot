@@ -5,7 +5,7 @@
 cc_affordance_planner_ros:
   ros__parameters:
     # --- Robot Name ---
-    cca_robot: "spot" # This package must be named cc_affordance_<cca_robot>_description
+    cca_robot: "spot" # Robot name. This package must be named cc_affordance_<cca_robot>_description
 
     # --- Action Servers - follow_joint_trajectory types---
     cca_robot_as: "/arm_controller/follow_joint_trajectory" # To execute robot trajectory on the robot
@@ -14,14 +14,5 @@ cc_affordance_planner_ros:
 
     cca_robot_and_gripper_as: "/arm_and_finger_controller/follow_joint_trajectory" # To execute robot and gripper trajectory together on the robot. One unified trajectory is sent. #Optional
 
-    # --- Topics ---
-    cca_joint_states_topic: "/spot_driver/joint_states" # Joint states topic name
-
-    # --- Robot Description ---
-    cca_robot_description_parameter: "robot_description" # Robot description parameter name
-
-    # --- Planning Group ---
-    cca_planning_group: "arm" # MoveIt planning group name
-
-    # --- Rviz Fixed Frame ---
-    rviz_fixed_frame: "base_link" # Fixed frame for viewing in Rviz
+    # --- Joint states topic ---
+    cca_joint_states_topic: "/spot_driver/joint_states"
