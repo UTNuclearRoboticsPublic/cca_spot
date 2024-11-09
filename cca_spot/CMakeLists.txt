@@ -10,44 +10,30 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(cca_ros REQUIRED)
-find_package(geometry_msgs)
-find_package(tf2_ros)
-find_package(std_srvs)
-find_package(spot_msgs)
 
 # Non-ROS packages
 find_package(Eigen3 REQUIRED)
 find_package(affordance_util REQUIRED)
 find_package(cc_affordance_planner REQUIRED)
 
-
 # Specify the node executables
 add_executable(${PROJECT_NAME}_node src/${PROJECT_NAME}_node.cpp)
 add_executable(${PROJECT_NAME}_demo src/demo/${PROJECT_NAME}_demo.cpp)
-add_executable(${PROJECT_NAME}_chair_demo_node src/${PROJECT_NAME}_chair_demo_node.cpp)
 
 # Specify ROS dependencies for the target
 ament_target_dependencies(${PROJECT_NAME}_node rclcpp cca_ros)
 ament_target_dependencies(${PROJECT_NAME}_demo rclcpp cca_ros)
-ament_target_dependencies(${PROJECT_NAME}_chair_demo_node rclcpp cca_ros tf2_ros geometry_msgs std_srvs spot_msgs)
 
 # Link Eigen libraries against this project library
 target_link_libraries(${PROJECT_NAME}_node affordance_util::affordance_util cc_affordance_planner::cc_affordance_planner Eigen3::Eigen)
 target_link_libraries(${PROJECT_NAME}_demo affordance_util::affordance_util cc_affordance_planner::cc_affordance_planner Eigen3::Eigen)
-target_link_libraries(${PROJECT_NAME}_chair_demo_node affordance_util::affordance_util cc_affordance_planner::cc_affordance_planner Eigen3::Eigen)
 
 install(TARGETS
   ${PROJECT_NAME}_node
   DESTINATION lib/${PROJECT_NAME}
 )
-
 install(TARGETS
   ${PROJECT_NAME}_demo
-  DESTINATION lib/${PROJECT_NAME}
-)
-
-install(TARGETS
-  ${PROJECT_NAME}_chair_demo_node
   DESTINATION lib/${PROJECT_NAME}
 )
 
