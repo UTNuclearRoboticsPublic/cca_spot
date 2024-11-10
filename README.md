@@ -1,6 +1,10 @@
 # Closed-Chain Affordance Planning for NRG Spot using ROS2
 This repository contains the `cca_spot` package, which implements the closed-chain affordance planning framework on the manipulator-integrated Boston Dynamics Spot robot.
 
+## Dependencies
+
+- **Required**: Robot Description for visualization purposes. It is available as the `spot_description` package in the NRG `spot_ros` repo.
+
 ## Build and Install Instructions:
 1. Install the closed-chain affordance planning libraries by following instructions from the following repository:
    [Link to instructions](https://github.com/UTNuclearRoboticsPublic/closed_chain_affordance_ros.git)
