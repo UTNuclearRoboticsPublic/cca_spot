@@ -1,11 +1,11 @@
-# Closed-chain Affordance Planning for NRG Spot using ROS2
-This repository contains the `cca_spot` package to implement the closed-chain affordance planning framework on the NRG Spot robot.
+# Closed-Chain Affordance Planning for NRG Spot using ROS2
+This repository contains the `cca_spot` package, which implements the closed-chain affordance planning framework on the manipulator-integrated Boston Dynamics Spot robot.
 
 ## Build and Install Instructions:
 1. Install the closed-chain affordance planning libraries by following instructions from the following repository:
    [Link to instructions](https://github.com/UTNuclearRoboticsPublic/closed_chain_affordance_ros.git)
 
-2. Clone this repository onto your local machine ROS2 workspace `src` folder:
+2. Clone this repository onto your machine ROS2 workspace `src` folder:
    ```
    cd ~/<ros2_ws_name>/src
    ```
@@ -23,39 +23,46 @@ This repository contains the `cca_spot` package to implement the closed-chain af
    ```
    source install/setup.bash
    ```
-### Notable Dependencies
-   `xterm`, install with `sudo apt install xterm`
 
 ## Run Instructions:
 
-### On the Spot Core:
+### Using With a Physical Robot
+To execute CCA-generated trajectories on the NRG Spot robot:
+
+#### On the Spot Core
 
 1. Run the Spot driver:
    ```
    ros2 launch spot_bringup bringup.launch.py hostname:=192.168.50.3
    ```
 
-2. Launch the robot state publisher:
+#### On Your Local Machine
+
+2. Launch the CCA visualizer for Spot:
+
    ```
-   ros2 launch spot_description state_publisher.launch.py has_arm:=True
+   ros2 launch cca_spot cca_spot_viz.launch.py
    ```
 
-### On Your Local Machine:
+3. Launch the CCA planner/executor:
+   ```
+   ros2 launch cca_spot cca_spot.launch.py
+   ```
+### Using Without a Physical Robot
+You can plan and visualize trajectories for the BD Spot using the CCA framework without needing a physical robot. The following demonstration showcases various CCA framework features on Spot.
 
-3. Load `robot_description_semantic` onto the parameter server. For convenience, we'll do it by launching the Moveit motion planning plugin file, which not only publishes `robot_description_semantic`, but also opens up `Rviz`.
+1. Launch the CCA-visualizer for Spot:
+
    ```
-   ros2 launch spot_arm_moveit2_config spot_arm_planning_execution.launch.py joint_state_topic:=/spot_driver/joint_states
+   ros2 launch cca_spot cca_spot_viz.launch.py
    ```
 
-4. Run the planning visualization server. Then, in RViz, add MarkerArray with publishing topic, `/rviz_visual_tools`.
+2. Launch the CCA planner demo node:
    ```
-   ros2 run cca_ros_viz cca_ros_viz_node
+   ros2 launch cca_spot cca_spot_demo.launch.py
    ```
 
-5. Load closed-chain affordance description for Spot and run the closed-chain affordance planner node:
-   ```
-   ros2 launch cca_spot cca_spot_launch.py
-   ```
+You are encouraged to modify the tasks in the demo node to plan and visualize trajectories tailored to your specific applications. Task examples are also provided in the package README.md.
 
 ## Author
 Janak Panthi aka Crasun Jans
