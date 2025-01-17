@@ -20,9 +20,8 @@
 class CcaSpot : public cca_ros::CcaRos
 {
   public:
-    explicit CcaSpot(const std::string &node_name, const rclcpp::NodeOptions &node_options, bool visualize_trajectory,
-                     bool execute_trajectory)
-        : cca_ros::CcaRos(node_name, node_options, visualize_trajectory, execute_trajectory)
+    explicit CcaSpot(const std::string &node_name, const rclcpp::NodeOptions &node_options)
+        : cca_ros::CcaRos(node_name, node_options)
     {
     }
 
@@ -261,7 +260,7 @@ int main(int argc, char **argv)
     rclcpp::init(argc, argv);
     rclcpp::NodeOptions node_options;
     node_options.automatically_declare_parameters_from_overrides(true);
-    auto node = std::make_shared<CcaSpot>("cca_ros", node_options, true, false);
+    auto node = std::make_shared<CcaSpot>("cca_ros", node_options);
     RCLCPP_INFO(node->get_logger(), "CCA Planner is active");
 
     // Spin the node so joint states can be read
